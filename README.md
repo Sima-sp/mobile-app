@@ -74,6 +74,20 @@ Instalado, ele abre em tela cheia, com o ícone do SIMA (`public/manifest.webman
 `public/icone-*.png`), e o botão "onde estou" passa a funcionar, porque o celular só libera a
 localização em endereços `https`.
 
+### Sem internet
+
+No app publicado, um service worker (`public/sw.js`) guarda no aparelho o próprio app e os pedaços
+do mapa **já vistos**. Com isso:
+
+- o app abre e funciona sem internet (a demonstração inteira roda no aparelho);
+- o mapa aparece nas áreas e nos zooms por onde a pessoa já passou com internet; o resto fica vazio;
+- as rotas e a busca de endereço **não** funcionam sem internet (o cartão da rota avisa).
+
+Antes de uma apresentação: abra o app com internet, passeie pelo mapa nas áreas que vai mostrar
+(de longe e de perto) e abra o app mais uma vez. A página é sempre buscada na internet primeiro,
+então uma versão nova publicada chega na abertura seguinte. Em `npm run dev` o service worker não
+é ligado.
+
 ## Gestos e animações
 
 - O **cartão do bueiro** acompanha o dedo: puxar para baixo fecha, puxar para cima abre a tela
@@ -201,8 +215,11 @@ seria pior do que avisar. Ele mantém a última resposta boa (guardada no aparel
 
 ```
 index.html                 aplica o tema antes do React (a tela não pisca)
+public/
+  sw.js                    service worker: o app e o mapa já visto continuam abrindo sem internet
+  manifest.webmanifest     nome, ícones e cores do app instalado
 src/
-  main.jsx                 entrada: fontes, estilos, App
+  main.jsx                 entrada: fontes, estilos, App; liga o service worker no app publicado
   App.jsx                  provedores e rotas (o mapa fica sempre montado por baixo)
   config.js                o que muda por ambiente (API, tiles, intervalo, serviços de rota)
   dados/
