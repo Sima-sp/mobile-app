@@ -10,9 +10,11 @@
 //      cruzamento ou de um viaduto, a via mais próxima nem sempre é a do endereço.
 //   2. Entram também as outras vias com o mesmo nome: a continuação da rua e, nas avenidas, a
 //      pista do outro sentido.
-//   3. De cada via fica só o pedaço a até 150 m do bueiro.
-//   4. O traçado é simplificado (tolerância de 2 m) e guardado em passos de 0,00001 grau (cerca de
-//      1 m) a partir da posição do bueiro, para o arquivo ficar pequeno.
+//   3. De cada via fica só o pedaço a até 300 m do bueiro. É o bastante para o trecho aparecer no
+//      mapa na escala de um bairro, sem pintar a avenida inteira.
+//   4. Os pedaços que se encostam são emendados (o OpenStreetMap divide uma rua em muitos pedaços),
+//      o traçado é simplificado (tolerância de 2 m) e guardado em passos de 0,00001 grau (cerca
+//      de 1 m) a partir da posição do bueiro, para o arquivo ficar pequeno.
 //
 // É uma aproximação: o SIMA monitora o bueiro, não a rua. O trecho mostra onde a água tende a
 // aparecer primeiro, e não a mancha exata de um alagamento.
@@ -20,10 +22,11 @@
 const METROS_POR_GRAU = 111320;
 
 export const REGRAS_RUAS = {
-  raioBusca: 170,      // m: até onde procurar vias em volta do bueiro
-  raioTrecho: 150,     // m: quanto da rua é pintado para cada lado
+  raioBusca: 320,      // m: até onde procurar vias em volta do bueiro
+  raioTrecho: 300,     // m: quanto da rua é pintado para cada lado
   nomeAte: 80,         // m: até onde uma via com o nome do endereço ganha da mais próxima
   longeDemais: 60,     // m: sem via mais perto que isto, o bueiro fica sem trecho
+  emenda: 0.6,         // m: pontas mais próximas que isto são a mesma ponta
   tolerancia: 2,       // m: simplificação do traçado
   pedacoMinimo: 10,    // m: pedaços menores que isto são descartados
   passo: 1e-5,         // graus: unidade em que o traçado é guardado
@@ -137,6 +140,37 @@ export function simplificar(caminho, tolerancia) {
   return [...antes.slice(0, -1), ...depois];
 }
 
+/**
+ * Emenda os pedaços que se encostam pelas pontas, formando linhas contínuas. Num entroncamento
+ * (três pontas no mesmo lugar) emenda duas e deixa a terceira como linha à parte.
+ */
+export function emendar(pedacos, folga) {
+  const perto = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= folga;
+  const restantes = pedacos.map((p) => [...p]);
+  const linhas = [];
+  while (restantes.length) {
+    let linha = restantes.shift();
+    for (let achou = true; achou;) {
+      achou = false;
+      for (let i = 0; i < restantes.length; i += 1) {
+        const outro = restantes[i];
+        const fim = linha[linha.length - 1];
+        const inicio = linha[0];
+        if (perto(fim, outro[0])) linha = [...linha, ...outro.slice(1)];
+        else if (perto(fim, outro[outro.length - 1])) linha = [...linha, ...outro.slice(0, -1).reverse()];
+        else if (perto(inicio, outro[outro.length - 1])) linha = [...outro.slice(0, -1), ...linha];
+        else if (perto(inicio, outro[0])) linha = [...outro.slice(1).reverse(), ...linha];
+        else continue;
+        restantes.splice(i, 1);
+        achou = true;
+        break;
+      }
+    }
+    linhas.push(linha);
+  }
+  return linhas;
+}
+
 const comprimento = (caminho) => caminho.slice(1).reduce((soma, p, i) => soma + Math.hypot(p[0] - caminho[i][0], p[1] - caminho[i][1]), 0);
 
 /**
@@ -171,20 +205,19 @@ export function trechoDoPonto(ponto, vias, regras = REGRAS_RUAS) {
     ? perto.filter((c) => palavrasDoNome(c.via.nome).join(" ") === chave)
     : [escolhida];
 
+  const pedacos = daRua.flatMap(({ caminho }) => recortarNoCirculo(caminho, regras.raioTrecho));
   const linhas = [];
   let total = 0;
-  for (const { caminho } of daRua) {
-    for (const pedaco of recortarNoCirculo(caminho, regras.raioTrecho)) {
-      const simples = simplificar(pedaco, regras.tolerancia);
-      const tamanho = comprimento(simples);
-      if (tamanho < regras.pedacoMinimo) continue;
-      total += tamanho;
-      const linha = [];
-      for (const [x, y] of simples) {
-        linha.push(Math.round(x / escalaX / regras.passo), Math.round(y / METROS_POR_GRAU / regras.passo));
-      }
-      linhas.push(linha);
+  for (const emendada of emendar(pedacos, regras.emenda)) {
+    const simples = simplificar(emendada, regras.tolerancia);
+    const tamanho = comprimento(simples);
+    if (tamanho < regras.pedacoMinimo) continue;
+    total += tamanho;
+    const linha = [];
+    for (const [x, y] of simples) {
+      linha.push(Math.round(x / escalaX / regras.passo), Math.round(y / METROS_POR_GRAU / regras.passo));
     }
+    linhas.push(linha);
   }
   return { via: escolhida.via.nome ?? null, pelaNome: Boolean(comNome), distancia: Math.round(escolhida.distancia), metros: Math.round(total), linhas };
 }
@@ -208,4 +241,37 @@ export function somaDeVerificacao(texto) {
   let h = 2166136261;
   for (let i = 0; i < texto.length; i += 1) h = Math.imul(h ^ texto.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * O texto do arquivo src/dados/ruasDosBueiros.js.
+ * @param {Array<{ id: string, linhas: number[][] }>} trechos  um por ponto, na ordem dos pontos
+ * @param {string} data  dia em que as ruas foram buscadas, "AAAA-MM-DD"
+ */
+export function textoDoArquivo(trechos, data) {
+  const corpo = trechos.map((t) => `  ${JSON.stringify(String(t.id))}: ${JSON.stringify(t.linhas)},`).join("\n");
+  const soma = somaDeVerificacao(trechos.map((t) => `${t.id} ${JSON.stringify(t.linhas)} ${somaDeVerificacao(JSON.stringify(t.linhas))}`).join("\n"));
+  const semTrecho = trechos.filter((t) => t.linhas.length === 0).map((t) => t.id);
+  return `// Trecho de rua em volta de cada ponto monitorado: a "rua afetada" que o mapa pinta quando o
+// bueiro está em nível alto ou crítico (ver src/mapa/ruasAfetadas.js).
+//
+// ARQUIVO GERADO por ferramentas/gerar-ruas.mjs em ${data}. Não edite à mão: rode o gerador
+// (npm run ruas). A regra de escolha do trecho está em ferramentas/ruas-nucleo.mjs.
+//
+// Fonte do traçado: OpenStreetMap (© colaboradores do OpenStreetMap, licença ODbL), consultado
+// pelo serviço Overpass.
+//
+// Formato: para cada id de ponto (os de pontosCapital.js), uma lista de linhas. Cada linha é
+// [dLon, dLat, dLon, dLat, ...]: passos de PASSO graus (cerca de 1 m) a partir da posição do ponto.
+// Pontos sem rua de carro a até ${REGRAS_RUAS.longeDemais} m ficam com a lista vazia${semTrecho.length ? ` (hoje: ${semTrecho.join(", ")})` : ""}.
+
+export const PASSO = ${REGRAS_RUAS.passo};
+
+/** Soma de verificação do conteúdo, impressa pelo gerador. Serve para conferir uma cópia. */
+export const SOMA = "${soma}";
+
+export const RUAS_DOS_BUEIROS = {
+${corpo}
+};
+`;
 }
