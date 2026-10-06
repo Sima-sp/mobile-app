@@ -4,7 +4,7 @@
 // src/config.js). O desenho — o que aparece, em que cor e em que zoom — é todo daqui.
 // As cores do mapa NÃO ficam neste arquivo: são lidas dos tokens --map-* do CSS
 // (src/estilos/base.css), então o mapa acompanha o tema noturno/claro sem ter uma segunda
-// paleta para manter. A única exceção são as manchas do modo calor (ver CALOR abaixo).
+// paleta para manter.
 //
 // Regras do desenho, as mesmas dos grandes apps de mapa:
 // - O fundo é neutro (terreno e ruas em cinza) para os bueiros serem a única coisa colorida.
@@ -13,9 +13,10 @@
 //   de longe só as expressas e avenidas; as ruas de bairro surgem ao aproximar.
 // - Nomes discretos, com contorno na cor do terreno para continuarem legíveis sobre as ruas.
 //
-// O estilo também carrega os pontos do SIMA (fonte "pontos") para o modo calor. Como tudo é
-// declarado aqui, MapaBase só precisa chamar setStyle de novo quando tema, pontos ou modo mudam;
-// o MapLibre compara com o estilo anterior e aplica só a diferença.
+// O estilo também carrega a rota (fonte "rota"), quando há uma. Como tudo é declarado aqui,
+// MapaBase só precisa chamar setStyle de novo quando o tema ou a rota mudam; o MapLibre compara
+// com o estilo anterior e aplica só a diferença. Os bueiros não fazem parte do estilo: são
+// marcadores desenhados por cima do mapa (MapaBase.jsx).
 
 import { CONFIG } from "../config.js";
 
@@ -38,30 +39,12 @@ const TOKENS = {
   rotaOutra: "--map-route-alt",
 };
 
-// Cores das manchas do modo calor. São as mesmas nos dois temas, como no desenho: as cores de
-// risco do tema claro são escuras (feitas para texto) e virariam manchas apagadas no mapa.
-const CALOR = { 1: "#62c9b0", 2: "#ead04e", 3: "#f58a2b", 4: "#f0508c" };
-
 /** Lê as cores do tema em vigor. Chamar depois que a classe do tema já está no <html>. */
 export function lerCoresDoTema() {
   const css = getComputedStyle(document.documentElement);
   const cores = {};
   for (const [nome, token] of Object.entries(TOKENS)) cores[nome] = css.getPropertyValue(token).trim() || "#888888";
   return cores;
-}
-
-/** Transforma os pontos em GeoJSON para a camada de calor. Só entram pontos com nível. */
-export function pontosParaGeoJson(pontos) {
-  return {
-    type: "FeatureCollection",
-    features: pontos
-      .filter((p) => p.nivel)
-      .map((p) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
-        properties: { id: p.id, nivel: p.nivel },
-      })),
-  };
 }
 
 /**
@@ -89,11 +72,9 @@ const NOME = ["coalesce", ["get", "name:pt"], ["get", "name:latin"], ["get", "na
 /**
  * @param {object} cores           resultado de lerCoresDoTema()
  * @param {object} opcoes
- * @param {object} opcoes.geojson  pontos do SIMA (pontosParaGeoJson)
- * @param {boolean} opcoes.calor   true mostra as manchas de calor
  * @param {object} opcoes.rota     rota a desenhar (rotaParaGeoJson)
  */
-export function montarEstilo(cores, { geojson, calor = false, rota } = {}) {
+export function montarEstilo(cores, { rota } = {}) {
   const papel = (nome) => ["==", ["get", "papel"], nome];
   const larguraDaRota = largura(1.3, 9, 3.5, 14, 6, 18, 12);
   // Cada tipo de via: quais classes, a cor, em que zoom entra, a largura por zoom e, nas maiores,
@@ -126,8 +107,6 @@ export function montarEstilo(cores, { geojson, calor = false, rota } = {}) {
     }));
 
   const texto = (extra) => ({ "text-color": cores.rotulo, "text-halo-color": cores.fundo, "text-halo-width": 1.4, ...extra });
-  const corPorNivel = ["match", ["get", "nivel"], 1, CALOR[1], 2, CALOR[2], 3, CALOR[3], 4, CALOR[4], CALOR[1]];
-  const visivel = calor ? "visible" : "none";
 
   return {
     version: 8,
@@ -135,7 +114,6 @@ export function montarEstilo(cores, { geojson, calor = false, rota } = {}) {
     glyphs: CONFIG.mapa.urlGlifos,
     sources: {
       base: { type: "vector", url: CONFIG.mapa.urlTiles },
-      pontos: { type: "geojson", data: geojson ?? { type: "FeatureCollection", features: [] } },
       rota: { type: "geojson", data: rota ?? { type: "FeatureCollection", features: [] } },
     },
     layers: [
@@ -169,14 +147,6 @@ export function montarEstilo(cores, { geojson, calor = false, rota } = {}) {
       { id: "trilhos", type: "line", source: "base", "source-layer": "transportation", minzoom: 12,
         filter: ["all", LINHA, classe("rail", "transit")],
         paint: { "line-color": cores.trilho, "line-width": 1.2, "line-dasharray": [4, 3] } },
-
-      // Manchas de calor: um círculo esfumado por ponto, na cor do nível.
-      { id: "calor-halo", type: "circle", source: "pontos", layout: { visibility: visivel },
-        paint: { "circle-color": corPorNivel, "circle-blur": 1, "circle-opacity": 0.5,
-          "circle-radius": largura(1.6, 10, 22, 13, 70, 16, 190) } },
-      { id: "calor-nucleo", type: "circle", source: "pontos", layout: { visibility: visivel },
-        paint: { "circle-color": corPorNivel, "circle-blur": 0.6, "circle-opacity": 0.75,
-          "circle-radius": largura(1.6, 10, 6, 13, 18, 16, 46) } },
 
       // Rota: a outra opção em cinza por baixo; a escolhida em azul, com contorno para destacar
       // das ruas; a partida é um anel e a chegada um ponto cheio.

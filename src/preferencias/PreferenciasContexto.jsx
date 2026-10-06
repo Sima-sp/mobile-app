@@ -1,4 +1,4 @@
-// Preferências do usuário guardadas no aparelho: tema, animações e modo de abertura do mapa.
+// Preferências do usuário guardadas no aparelho: tema e animações.
 // Nada daqui vai para o backend.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -49,7 +49,6 @@ export function ProvedorPreferencias({ children }) {
     const guardado = lerGuardado();
     const inicial = {
       tema: guardado.tema === "claro" || guardado.tema === "escuro" ? guardado.tema : temaDoSistema(),
-      abrirEmCalor: guardado.abrirEmCalor === true,
       animacoes: ["ligadas", "reduzidas"].includes(guardado.animacoes) ? guardado.animacoes : "sistema",
     };
     aplicarTema(inicial.tema);
@@ -84,7 +83,7 @@ export function ProvedorPreferencias({ children }) {
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 
-/** @returns {{ tema: "escuro"|"claro", animacoes: "sistema"|"ligadas"|"reduzidas", abrirEmCalor: boolean, mudar: (parcial: object) => void }} */
+/** @returns {{ tema: "escuro"|"claro", animacoes: "sistema"|"ligadas"|"reduzidas", mudar: (parcial: object) => void }} */
 export function usePreferencias() {
   const valor = useContext(Contexto);
   if (!valor) throw new Error("usePreferencias precisa estar dentro de <ProvedorPreferencias>.");

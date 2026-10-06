@@ -1,9 +1,10 @@
 // Tela principal: o mapa de risco. Fica sempre montada; as outras telas abrem por cima dela.
 //
-// O que tem aqui: botão de menu, controles do mapa (calor e "onde estou"), avisos sobre a origem
-// dos dados, a barra de busca em vidro, o botão de rotas e o cartão que sobe quando um bueiro é
-// tocado. No endereço /rota o mapa entra no "modo rota": desenha o caminho e troca a barra de
-// busca pelo cartão da rota (a partida e o destino são escolhidos em src/telas/Rotas.jsx).
+// O que tem aqui: botão de menu, o botão "onde estou", avisos sobre a origem dos dados, a barra
+// de busca em vidro (bueiros e lugares para ir) e o cartão que sobe quando um bueiro é tocado.
+// No endereço /rota o mapa entra no "modo rota": desenha o caminho e troca a barra de busca pelo
+// cartão da rota. O destino vem da busca (src/telas/Busca.jsx); a partida e as trocas, de
+// src/telas/Rotas.jsx.
 // O ponto selecionado fica no endereço (/?ponto=ID), então dá para abrir o app direto num bueiro
 // por um link. Tocar em outro ponto troca o endereço sem empilhar histórico.
 
@@ -20,7 +21,7 @@ import { useTelaLarga } from "../componentes/ganchos";
 import { useArrastarVertical } from "../componentes/arrastar";
 import { useEsc } from "../componentes/Tela";
 import {
-  IconeBusca, IconeCamadas, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
+  IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
   IconeSol, IconeTempestade,
 } from "../componentes/Icones";
 
@@ -28,7 +29,7 @@ const ICONE_DO_CLIMA = { sol: IconeSol, chuvisco: IconeChuvisco, "chuva-forte": 
 
 export default function Mapa() {
   const { pontos, agora, fonte, erro, carregando, simulacao, atualizadoEm, atualizar, demo } = usePontos();
-  const { tema, abrirEmCalor } = usePreferencias();
+  const { tema } = usePreferencias();
   const navegar = useNavigate();
   const local = useLocation();
   const [parametros] = useSearchParams();
@@ -41,7 +42,6 @@ export default function Mapa() {
   const painelRef = useRef(null);
   const rotas = useRotas();
 
-  const [calor, setCalor] = useState(abrirEmCalor);
   const [recado, setRecado] = useState(null);
 
   const naRaiz = local.pathname === "/";
@@ -149,7 +149,6 @@ export default function Mapa() {
         pontos={pontos}
         agora={agora}
         tema={tema}
-        calor={calor}
         selecionadoId={selecionado?.id ?? null}
         rota={rotaNoMapa}
         aoTocarPonto={selecionar}
@@ -171,39 +170,19 @@ export default function Mapa() {
           </div>
           <Avisos fonte={fonte} erro={erro} carregando={carregando} simulacao={simulacao} atualizadoEm={atualizadoEm}
             temPontos={pontos.length > 0} aoTentarDeNovo={atualizar} demo={demo} />
-          {calor ? (
-            <div className="lg mp-legend" role="group" aria-label="Legenda do mapa de calor">
-              <span><i style={{ background: "var(--r1)" }} />Baixo</span>
-              <span><i style={{ background: "var(--r2)" }} />Médio</span>
-              <span><i style={{ background: "var(--r3)" }} />Alto</span>
-              <span><i style={{ background: "var(--r4)" }} />Crítico</span>
-            </div>
-          ) : null}
           {recado ? <p className="lg mp-aviso" role="status">{recado}</p> : null}
         </div>
 
-        <div className="lg lg-caps" role="group" aria-label="Controles do mapa">
-          <button type="button" className={calor ? "mp-caps-on" : undefined} onClick={() => setCalor((c) => !c)}
-            aria-pressed={calor} aria-label="Mapa de calor">
-            <IconeCamadas />
-          </button>
-          <button type="button" onClick={localizar} aria-label="Centralizar em mim">
-            <IconeLocalizar />
-          </button>
-        </div>
+        <button type="button" className="lg lg-round" onClick={localizar} aria-label="Centralizar em mim">
+          <IconeLocalizar />
+        </button>
       </div>
-
-      {/* Botão de rotas: a ação principal do mapa, no lugar onde os apps de mapa a colocam. */}
-      <button type="button" className={`mp-rotas ${naRaiz && !cartaoAberto ? "" : "mp-rotas-oculto"}`} onClick={() => navegar("/rotas")}
-        aria-label="Traçar uma rota" inert={!naRaiz || cartaoAberto}>
-        <IconeRota />
-      </button>
 
       <div ref={barraRef} className={`lg mbar ${cartaoAberto || emRota ? "mbar-oculta" : ""}`} inert={cartaoAberto || emRota}>
         <span className="grabber" aria-hidden="true" />
-        <button type="button" className="mbar-field" onClick={() => navegar("/busca")} aria-label="Buscar bueiro ou bairro">
+        <button type="button" className="mbar-field" onClick={() => navegar("/busca")} aria-label="Buscar um lugar para ir, um bueiro ou um bairro">
           <IconeBusca />
-          <span className="mbar-ph">Buscar no mapa</span>
+          <span className="mbar-ph">Buscar lugar ou bueiro</span>
         </button>
         <button type="button" className="mbar-av" onClick={() => navegar("/perfil")} aria-label="Perfil">
           <IconePessoa />

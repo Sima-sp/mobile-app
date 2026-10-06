@@ -1,8 +1,10 @@
-// Tela de rotas: a pessoa escolhe de onde sai e para onde vai. O caminho em si aparece no mapa
-// (modo rota, em src/telas/Mapa.jsx), com o cartão que compara a rota segura com a mais rápida.
+// Tela de rotas: partida e destino. O caminho em si aparece no mapa (modo rota, em
+// src/telas/Mapa.jsx), com o cartão que compara a rota segura com a mais rápida.
 //
-// Para ser rápida de usar, a tela abre direto na escolha do destino. A partida é "Minha
-// localização" quando o aparelho informa; se não informar, a pessoa escolhe um lugar.
+// O caminho normal começa na busca do mapa (src/telas/Busca.jsx): a pessoa escolhe para onde vai
+// e chega aqui só se a partida ainda não for conhecida. Aí a tela tenta a posição do aparelho
+// ("Minha localização") e, enquanto isso ou se não der, oferece a escolha da partida.
+// Também é aqui que se troca a partida ou o destino de uma rota aberta ("Trocar", no cartão).
 // Cada campo aceita um endereço digitado (busca de endereço, src/rotas/servico.js) ou um dos
 // lugares conhecidos (src/rotas/lugares.js), que funcionam mesmo se a busca estiver fora do ar.
 
@@ -10,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRotas } from "../rotas/RotaContexto";
 import { LUGARES } from "../rotas/lugares";
-import { buscarEnderecos } from "../rotas/servico";
+import { useEnderecos } from "../rotas/useEnderecos";
 import { semAcento } from "../dados/niveis";
 import { BotaoVoltar, CabecalhoTela, Tela } from "../componentes/Tela";
 import { IconeBusca, IconeFechar, IconeInverter, IconeLocalizar, IconePino, IconeSeta, IconeVoltar } from "../componentes/Icones";
@@ -49,7 +51,10 @@ export default function Rotas() {
   const { origem, destino, definirOrigem, definirDestino, inverter } = useRotas();
   const navegar = useNavigate();
   // Qual campo está sendo escolhido agora (null = mostra o resumo com os dois).
-  const [campo, setCampo] = useState(destino ? null : "destino");
+  const [campo, setCampo] = useState(() => {
+    if (!destino) return "destino";
+    return origem ? null : "origem";
+  });
   const [aviso, setAviso] = useState(null);
   const [localizando, setLocalizando] = useState(false);
 
@@ -78,6 +83,15 @@ export default function Rotas() {
       if (pedidoDePosicao.current === meuPedido) setLocalizando(false);
     }
   }
+
+  // Chegou com o destino escolhido (pela busca do mapa) e sem partida: tenta a posição do aparelho.
+  const jaTentou = useRef(false);
+  useEffect(() => {
+    if (jaTentou.current || !destino || origem) return;
+    jaTentou.current = true;
+    usarMinhaPosicao(destino);
+    // Só na abertura da tela; depois disso quem decide é a pessoa.
+  }, []);
 
   function aoEscolher(lugar) {
     setAviso(null);
@@ -141,35 +155,14 @@ export default function Rotas() {
 /** Escolha de um lugar: campo de busca, "Minha localização" (na partida), endereços achados e lugares conhecidos. */
 function EscolherLugar({ campo, aviso, localizando, aoEscolher, aoUsarPosicao, aoVoltar, outroLugar }) {
   const [texto, setTexto] = useState("");
-  const [busca, setBusca] = useState({ fase: "parada", lugares: [] });
+  const busca = useEnderecos(texto);
   const entrada = useRef(null);
 
   useEffect(() => {
     entrada.current?.focus({ preventScroll: true });
   }, [campo]);
 
-  // Busca de endereço: espera a pessoa parar de digitar e cancela o pedido anterior.
   const termo = texto.trim();
-  useEffect(() => {
-    if (termo.length < 3) {
-      setBusca({ fase: "parada", lugares: [] });
-      return undefined;
-    }
-    const controle = new AbortController();
-    setBusca((anterior) => ({ ...anterior, fase: "procurando" }));
-    const relogio = setTimeout(async () => {
-      try {
-        const lugares = await buscarEnderecos(termo, { sinal: controle.signal });
-        if (!controle.signal.aborted) setBusca({ fase: "pronta", lugares });
-      } catch {
-        if (!controle.signal.aborted) setBusca({ fase: "erro", lugares: [] });
-      }
-    }, 380);
-    return () => {
-      clearTimeout(relogio);
-      controle.abort();
-    };
-  }, [termo]);
 
   // O lugar já usado no outro campo não aparece: partida e destino iguais não fazem rota.
   const conhecidos = useMemo(() => {
@@ -200,10 +193,11 @@ function EscolherLugar({ campo, aviso, localizando, aoEscolher, aoUsarPosicao, a
         </div>
       </div>
 
+      {campo === "origem" && outroLugar ? <p className="small rt-contexto">Indo para <b>{outroLugar.nome}</b></p> : null}
       {aviso ? <p className="small rt-aviso" role="alert">{aviso}</p> : null}
 
       {campo === "origem" ? (
-        <div className="grp">
+        <div className="grp rt-eu">
           <button type="button" className="row row-2" onClick={aoUsarPosicao} disabled={localizando}>
             <span className="row-ic rt-ic-eu" aria-hidden="true"><IconeLocalizar pequeno /></span>
             <span className="row-k">{localizando ? "Procurando sua posição…" : "Minha localização"}</span>

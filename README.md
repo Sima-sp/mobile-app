@@ -53,8 +53,9 @@ O aviso "Demonstração" fica sempre na tela. O que é real e o que é inventado
 No mapa afastado, bueiros próximos viram um **anel com a quantidade no meio**: cada cor do anel é
 a parte do grupo naquele nível. Tocar no anel aproxima.
 
-Para a feira: o mapa de fundo (ruas) vem da internet, então o computador ou celular precisa estar
-conectado. Sem internet os bueiros e os dados continuam aparecendo, mas sobre um fundo liso.
+Para a feira: o mapa de fundo (ruas) vem da internet. No app publicado, o que já foi visto fica
+guardado no aparelho (ver "Sem internet", abaixo); em área nunca aberta, os bueiros aparecem sobre
+um fundo liso. As rotas sempre precisam de internet.
 
 ## Publicar e instalar no celular
 
@@ -102,9 +103,11 @@ então uma versão nova publicada chega na abertura seguinte. Em `npm run dev` o
 
 ## Rotas de carro
 
-O botão azul do mapa (ou "Desviar", no cartão de um bueiro em risco) abre as rotas. A pessoa
-escolhe o destino e a partida (a posição do aparelho, um endereço digitado ou um lugar conhecido)
-e o caminho aparece no mapa, com um cartão que diz:
+A rota começa na **busca do mapa** (a barra de baixo). O mesmo campo acha bueiros, bairros e
+lugares para ir: tocar num lugar (endereço digitado ou lugar conhecido) traça a rota até lá. A
+partida é a posição do aparelho; se ele não informar, a pessoa escolhe um lugar. "Desviar", no
+cartão de um bueiro em risco, e Menu → Rotas levam à mesma escolha. O caminho aparece no mapa,
+com um cartão que diz:
 
 - **Caminho livre**: o caminho mais rápido não passa por bueiro em risco.
 - **Rota segura**: há um desvio que evita todos; o cartão diz quantos minutos ele custa a mais e
@@ -151,7 +154,7 @@ fica para o que significa algo**. No SIMA: cinza é a rua, azul é a água e a a
 - O **cartão do bueiro** segue o padrão dos cartões de lugar desses apps: nome e situação, uma
   faixa com três números (água e lixo, medidos; chance de alagar, prevista) e os botões. O botão
   azul é a ação principal: "Desviar" quando o bueiro está em risco (alto, crítico ou transbordando)
-  e "Ver detalhes" nos demais. No mapa, o botão azul redondo abre as rotas.
+  e "Ver detalhes" nos demais.
 - A landing (`landing/`) continua com a paleta azulada anterior. Os nomes dos tokens são os mesmos,
   então dá para levar a nova paleta para lá copiando os blocos `.thm-dark` e `.thm-light`.
 
@@ -238,12 +241,13 @@ src/
     servico.js             conversa com o serviço de rotas (Valhalla) e a busca de endereço (Photon)
     lugares.js             lugares conhecidos oferecidos como atalho
     RotaContexto.jsx       partida, chegada e resultado; refaz a rota quando o risco muda (useRotas)
+    useEnderecos.js        busca de endereço enquanto a pessoa digita
     planejar.test.js       testes da regra, sem internet
   preferencias/
-    PreferenciasContexto.jsx   tema, animações e modo de abertura do mapa (usePreferencias)
+    PreferenciasContexto.jsx   tema e animações (usePreferencias)
   mapa/
     estiloMapa.js          estilo do MapLibre montado com os tokens do tema
-    MapaBase.jsx           o mapa, as tampas (marcadores) e o modo calor
+    MapaBase.jsx           o mapa, as tampas (marcadores) e o desenho da rota
     agrupar.js             junta bueiros próximos conforme o zoom (e agrupar.test.js)
   componentes/
     Tampa.jsx              a tampa que enche conforme o risco, e o selo de nível
@@ -253,10 +257,10 @@ src/
     ganchos.js             useVoltar, useTelaLarga, de onde a pessoa veio
   telas/
     Mapa.jsx               mapa, avisos, clima da demonstração, barra de busca, cartão do bueiro e modo rota
-    Rotas.jsx              escolha da partida e do destino
+    Rotas.jsx              partida e destino: resolve a partida e troca os dois
     Bueiro.jsx             detalhe: medido × previsto
     Bairros.jsx            situação por bairro
-    Busca.jsx              busca de bueiros e bairros
+    Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
     Menu.jsx               atalhos, tema e ajustes
     EmConstrucao.jsx       telas das próximas etapas e a tela Sobre
   estilos/
@@ -281,6 +285,9 @@ hospedagem estática sem configurar o servidor.
 - **"Sem previsão" não é "sem risco".** Ponto sem estimativa aparece com a tampa tracejada.
 - **Tema.** `.thm-dark` / `.thm-light` no `<html>`. O mapa lê as cores `--map-*` do CSS, então não
   existe uma segunda paleta para manter. A regra das cores está em "Cores e desenho", acima.
+- **Sem mapa de calor.** O modo calor (manchas coloridas em volta dos bueiros) foi retirado em
+  06/10/2026: ele sugeria uma área afetada que o app não conhece. A ideia que ficou para depois é
+  destacar as ruas afetadas, o que pede a geometria das ruas em volta de cada bueiro.
 - **Tela larga.** A partir de 900 px as telas viram uma coluna à esquerda e o mapa continua
   visível — é o que permite usar o mesmo app como "mapa web" da landing.
 - **Código do bueiro.** O banco só tem id, posição e vizinhança. O app monta o código com a sigla

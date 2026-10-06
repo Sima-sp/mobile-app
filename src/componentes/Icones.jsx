@@ -14,7 +14,6 @@ export const IconeVoltar = (p) => <Icone {...p}><path d="M14.5 5.5 8 12l6.5 6.5"
 export const IconeFechar = (p) => <Icone {...p}><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></Icone>;
 export const IconeSeta = (p) => <Icone {...p}><path d="M9.5 5.5 16 12l-6.5 6.5" /></Icone>;
 export const IconeBusca = (p) => <Icone {...p}><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></Icone>;
-export const IconeCamadas = (p) => <Icone {...p}><path d="M12 4 3.5 8.5 12 13l8.5-4.5z" /><path d="M3.5 12.5 12 17l8.5-4.5M3.5 16.3 12 20.8l8.5-4.5" /></Icone>;
 export const IconeLocalizar = (p) => <Icone {...p}><path d="M19.5 4.5 4.5 11l6.6 1.9 1.9 6.6z" /></Icone>;
 export const IconePessoa = (p) => <Icone {...p}><circle cx="12" cy="8.5" r="3.8" /><path d="M4.8 20.2c1.3-3.7 4-5.7 7.2-5.7s5.9 2 7.2 5.7" /></Icone>;
 export const IconeRota = (p) => <Icone {...p}><circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8" /></Icone>;

@@ -12,7 +12,7 @@ const VERSAO = "0.1";
 
 export default function Menu() {
   const navegar = useNavigate();
-  const { tema, animacoes, abrirEmCalor, mudar } = usePreferencias();
+  const { tema, animacoes, mudar } = usePreferencias();
   const { fonte, atualizadoEm, erro } = usePontos();
 
   // Ícones do menu sem cor: no app, cor é reservada ao risco (as quatro do nível) e à ação (azul).
@@ -74,15 +74,6 @@ export default function Menu() {
       <p className="micro" style={{ padding: "8px 36px 0" }}>
         “Do aparelho” segue a configuração de acessibilidade do celular ou computador.
       </p>
-
-      <h2 className="grp-t">Mapa</h2>
-      <div className="grp">
-        <div className="row row-flat">
-          <span className="row-k" id="rotulo-calor">Abrir o mapa em calor</span>
-          <button type="button" className={abrirEmCalor ? "tgl tgl-on" : "tgl"} role="switch" aria-checked={abrirEmCalor}
-            aria-labelledby="rotulo-calor" onClick={() => mudar({ abrirEmCalor: !abrirEmCalor })}><span /></button>
-        </div>
-      </div>
 
       <h2 className="grp-t">Sobre</h2>
       <div className="grp">

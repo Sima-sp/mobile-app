@@ -1,4 +1,4 @@
-// O mapa em si: MapLibre GL com o estilo do SIMA, as tampas como marcadores e o modo calor.
+// O mapa em si: MapLibre GL com o estilo do SIMA, as tampas como marcadores e a rota.
 //
 // Este componente só desenha. Quem decide qual ponto está selecionado, qual é o modo e o que
 // fazer ao tocar é a tela Mapa (src/telas/Mapa.jsx).
@@ -24,7 +24,7 @@ import { CONFIG } from "../config";
 import { Tampa } from "../componentes/Tampa";
 import { corNivel, rotuloNivel } from "../dados/niveis";
 import { nivelVisivel, statusAgora } from "../dados/modelo";
-import { lerCoresDoTema, montarEstilo, pontosParaGeoJson, rotaParaGeoJson } from "./estiloMapa";
+import { lerCoresDoTema, montarEstilo, rotaParaGeoJson } from "./estiloMapa";
 import { agruparPontos } from "./agrupar.js";
 
 setWorkerUrl(urlDoWorker);
@@ -35,7 +35,7 @@ const TEXTOS = {
 };
 
 export const MapaBase = forwardRef(function MapaBase(
-  { pontos, agora, tema, calor, selecionadoId, rota = null, aoTocarPonto, aoTocarFundo, medirAreaLivre },
+  { pontos, agora, tema, selecionadoId, rota = null, aoTocarPonto, aoTocarFundo, medirAreaLivre },
   ref,
 ) {
   const caixa = useRef(null);
@@ -51,14 +51,9 @@ export const MapaBase = forwardRef(function MapaBase(
   const toques = useRef({ aoTocarFundo, medirAreaLivre });
   toques.current = { aoTocarFundo, medirAreaLivre };
 
-  // No modo calor só entram previsões que ainda valem.
-  const geojson = useMemo(
-    () => pontosParaGeoJson(pontos.filter((p) => statusAgora(p, agora) !== "SEM_PREVISAO")),
-    [pontos, agora],
-  );
   const rotaGeo = useMemo(() => rotaParaGeoJson(rota), [rota]);
-  const ultimoEstilo = useRef({ geojson, calor, rota: rotaGeo });
-  ultimoEstilo.current = { geojson, calor, rota: rotaGeo };
+  const ultimoEstilo = useRef({ rota: rotaGeo });
+  ultimoEstilo.current = { rota: rotaGeo };
 
   // Cria o mapa uma vez.
   useEffect(() => {
@@ -88,7 +83,6 @@ export const MapaBase = forwardRef(function MapaBase(
     instancia.touchZoomRotate.disableRotation();
     instancia.keyboard.disableRotation();
     // Os créditos dos dados do mapa (OpenStreetMap, OpenMapTiles) são obrigatórios.
-    // Ficam no canto de baixo à esquerda; o da direita é do botão de rotas.
     instancia.addControl(new AttributionControl({ compact: true }), "bottom-left");
     instancia.on("load", () => setPronto(true));
     const anotarZoom = () => setZoom(Math.round(instancia.getZoom() * 4) / 4);
@@ -107,11 +101,11 @@ export const MapaBase = forwardRef(function MapaBase(
     };
   }, []);
 
-  // Tema, pontos, modo ou rota mudaram: remonta o estilo e o MapLibre aplica só a diferença.
+  // Tema ou rota mudaram: remonta o estilo e o MapLibre aplica só a diferença.
   useEffect(() => {
     if (!mapa || !pronto) return;
-    mapa.setStyle(montarEstilo(lerCoresDoTema(), { geojson, calor, rota: rotaGeo }), { diff: true });
-  }, [mapa, pronto, tema, geojson, calor, rotaGeo]);
+    mapa.setStyle(montarEstilo(lerCoresDoTema(), { rota: rotaGeo }), { diff: true });
+  }, [mapa, pronto, tema, rotaGeo]);
 
   // Rota nova: enquadra o caminho inteiro (as duas opções) na área livre do mapa.
   useEffect(() => {
@@ -193,7 +187,7 @@ export const MapaBase = forwardRef(function MapaBase(
       {/* O MapLibre troca o "position" do elemento que recebe; por isso ele ganha uma caixa só dele. */}
       <div className="mp-tela"><div ref={caixa} className="mp-caixa" /></div>
       {mapa ? (
-        <Marcadores mapa={mapa} pontos={pontos} agora={agora} zoom={zoom} selecionadoId={selecionadoId} ocultos={calor} aoTocar={aoTocarPonto} />
+        <Marcadores mapa={mapa} pontos={pontos} agora={agora} zoom={zoom} selecionadoId={selecionadoId} aoTocar={aoTocarPonto} />
       ) : null}
     </>
   );
@@ -204,7 +198,7 @@ export const MapaBase = forwardRef(function MapaBase(
  * Cada grupo ganha um marcador do MapLibre (que cuida da posição na tela) e o conteúdo é
  * desenhado pelo React dentro dele, com um portal.
  */
-function Marcadores({ mapa, pontos, agora, zoom, selecionadoId, ocultos, aoTocar }) {
+function Marcadores({ mapa, pontos, agora, zoom, selecionadoId, aoTocar }) {
   const registro = useRef(new Map()); // chave do grupo → { marcador, no }
   const [, redesenhar] = useReducer((n) => n + 1, 0);
 
@@ -262,21 +256,20 @@ function Marcadores({ mapa, pontos, agora, zoom, selecionadoId, ocultos, aoTocar
     const item = registro.current.get(g.chave);
     if (!item) return null;
     const conteudo = g.membros.length === 1
-      ? <BotaoTampa ponto={g.membros[0]} agora={agora} selecionado={g.membros[0].id === selecionadoId} oculto={ocultos}
+      ? <BotaoTampa ponto={g.membros[0]} agora={agora} selecionado={g.membros[0].id === selecionadoId}
           comRotulo={zoom >= 13} aoTocar={aoTocar} />
-      : <BotaoGrupo membros={g.membros} agora={agora} oculto={ocultos} aoTocar={abrirGrupo} />;
+      : <BotaoGrupo membros={g.membros} agora={agora} aoTocar={abrirGrupo} />;
     return createPortal(conteudo, item.no, g.chave);
   });
 }
 
-function BotaoTampa({ ponto, agora, selecionado, oculto, comRotulo, aoTocar }) {
+function BotaoTampa({ ponto, agora, selecionado, comRotulo, aoTocar }) {
   const status = statusAgora(ponto, agora);
   const nivel = nivelVisivel(ponto, agora);
   const desatualizado = status === "DESATUALIZADA";
   const classes = ["mk"];
   if (selecionado) classes.push("mk-sel");
   if (desatualizado) classes.push("mk-apagado");
-  if (oculto) classes.push("mk-oculto");
 
   let descricao = `Bueiro ${ponto.codigo}`;
   if (ponto.endereco) descricao += `, ${ponto.endereco}`;
@@ -293,7 +286,6 @@ function BotaoTampa({ ponto, agora, selecionado, oculto, comRotulo, aoTocar }) {
       className={classes.join(" ")}
       aria-label={descricao}
       aria-pressed={selecionado}
-      tabIndex={oculto ? -1 : 0}
       onClick={(evento) => {
         evento.stopPropagation();
         aoTocar?.(ponto.id);
@@ -314,7 +306,7 @@ function BotaoTampa({ ponto, agora, selecionado, oculto, comRotulo, aoTocar }) {
  * O anel mostra a proporção (e não só o pior caso) para o mapa afastado não exagerar: um grupo de
  * 38 bueiros com 3 em nível médio aparece quase todo verde, com um trecho amarelo.
  */
-function BotaoGrupo({ membros, agora, oculto, aoTocar }) {
+function BotaoGrupo({ membros, agora, aoTocar }) {
   const contagem = [0, 0, 0, 0, 0]; // baixo, médio, alto, crítico, sem previsão
   for (const p of membros) contagem[(nivelVisivel(p, agora) ?? 5) - 1] += 1;
   const total = membros.length;
@@ -344,9 +336,8 @@ function BotaoGrupo({ membros, agora, oculto, aoTocar }) {
   return (
     <button
       type="button"
-      className={`mk mk-grupo ${oculto ? "mk-oculto" : ""}`}
+      className="mk mk-grupo"
       aria-label={descricao}
-      tabIndex={oculto ? -1 : 0}
       onClick={(evento) => {
         evento.stopPropagation();
         aoTocar(membros);
