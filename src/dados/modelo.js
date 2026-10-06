@@ -12,6 +12,8 @@
 //   nivelModelo           nível que o modelo deu antes do ajuste pelo sensor
 //   ajusteSensorAplicado  true = a leitura do sensor subiu o nível
 //   probabilidade         0 a 1, ou null (modo regras não devolve probabilidade)
+//   probabilidadeSemSensor  a chance só pela chuva e pelo lugar, quando a origem informa as duas
+//                         (hoje só a demonstração); serve para mostrar o quanto o sensor pesou
 //   janelaHoras           horizonte da previsão (3)
 //   status                "VALIDA" | "DESATUALIZADA" | "SEM_PREVISAO"
 //   geradaEm, validaAte   Date ou null
@@ -108,6 +110,7 @@ export function normalizarPrevisao(item) {
     nivel,
     nivelModelo: nivelDeTexto(item.nivelRiscoModelo),
     probabilidade: numero(item.probabilidadeAlagamento),
+    probabilidadeSemSensor: null, // o backend ainda não manda a chance antes e depois do sensor
     janelaHoras: numero(item.janelaHoras) ?? CONFIG.janelaHorasPadrao,
     status: item.status || (nivel ? "VALIDA" : "SEM_PREVISAO"),
     geradaEm: lerData(item.geradaEm),
@@ -222,7 +225,8 @@ export function resumoPrevisao(ponto, agora = new Date()) {
 
 /**
  * Os três números do cartão do bueiro, lado a lado: dois MEDIDOS pelo sensor (água e lixo) e um
- * PREVISTO pela IA (chance de alagar na janela). Quando falta o dado o valor vem como "—", e a
+ * PREVISTO pela IA (chance de alagar na janela). Com o bueiro transbordando, o terceiro deixa de
+ * ser previsão e diz "Agora". Quando falta o dado o valor vem como "—", e a
  * `descricao` (lida pelo leitor de tela) diz o motivo por extenso.
  */
 export function fatosDoCartao(ponto, agora = new Date()) {
@@ -233,7 +237,10 @@ export function fatosDoCartao(ponto, agora = new Date()) {
   const chance = status === "VALIDA" ? textoProbabilidade(ponto.probabilidade) : null;
 
   let previsto;
-  if (chance) {
+  if (ponto.medicaoTransbordando) {
+    // Bueiro cheio é medição: a coluna da previsão não mostra uma chance ao lado de um fato.
+    previsto = { rotulo: "Transbordando", valor: "Agora", descricao: "Transbordando agora, medido pelo sensor" };
+  } else if (chance) {
     previsto = { rotulo: `Chance em ${janela} h`, valor: chance.replace("menos de ", "< "), descricao: `${chance} de chance de alagar nas próximas ${janela} horas, previsto pela IA` };
   } else if (status === "VALIDA") {
     previsto = { rotulo: `Risco em ${janela} h`, valor: rotuloNivel(ponto.nivel), descricao: `Risco ${rotuloNivel(ponto.nivel).toLowerCase()} nas próximas ${janela} horas, estimado por regras` };

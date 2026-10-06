@@ -3,9 +3,11 @@
 //
 // A conta em si é a de src/dados/demo.js (simularPrevisao), a mesma que move a demonstração do
 // mapa. Não é o modelo de verdade rodando no aparelho: é uma versão simplificada que responde do
-// mesmo jeito (mais chuva e mais histórico de alagamento dão mais chance; o sensor ajusta o nível).
+// mesmo jeito (mais chuva e mais histórico de alagamento dão mais chance; bueiro enchendo ou com
+// muito lixo multiplica essa chance).
 
 import { LIMIARES, PONTOS_BASE, simularPrevisao } from "./demo.js";
+import { textoProbabilidade } from "./modelo.js";
 import { rotuloNivel } from "./niveis.js";
 
 const formato = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
@@ -35,7 +37,7 @@ export const CENARIOS = [
   { id: "seco", rotulo: "Dia seco", chuva: 0, agua: 8, lixo: 20 },
   { id: "forte", rotulo: "Chuva forte", chuva: 0.68, agua: 45, lixo: 20 },
   { id: "temporal", rotulo: "Temporal", chuva: 1, agua: 70, lixo: 20 },
-  { id: "entupido", rotulo: "Bueiro entupido", chuva: 0.5, agua: 85, lixo: 80 },
+  { id: "entupido", rotulo: "Bueiro entupido", chuva: 0.5, agua: 82, lixo: 80 },
   { id: "transbordando", rotulo: "Transbordando", chuva: 0.85, agua: 100, lixo: 40 },
 ];
 
@@ -59,6 +61,11 @@ const vezesPorAno = (freq) => {
   return `cerca de ${arredondado} ${arredondado === 1 ? "vez" : "vezes"} por ano`;
 };
 
+/** "2,9 vezes", "12 vezes": quanto uma leitura multiplicou a chance. */
+export function vezes(fator) {
+  return `${formato.format(fator >= 10 ? Math.round(fator) : fator)} vezes`;
+}
+
 /**
  * Responde à simulação e explica a resposta em frases curtas.
  * @param {{ chuva: number, agua: number, lixo: number }} entrada  chuva de 0 a 1; água e lixo em %
@@ -68,7 +75,7 @@ const vezesPorAno = (freq) => {
  */
 export function responder(entrada, lugar) {
   const resultado = simularPrevisao({ ...entrada, sensibilidade: lugar.sensibilidade });
-  const { chuvaRecente3h: mm, motivos } = resultado;
+  const { chuvaRecente3h: mm, fatorAgua, fatorLixo } = resultado;
   const rotuloChuva = rotuloDaChuva(mm);
 
   const chuva = {
@@ -84,40 +91,40 @@ export function responder(entrada, lugar) {
     efeito: null,
   };
 
-  // Com o nível do modelo já em crítico não há degrau para subir: a leitura conta, mas não muda nada.
-  const noTeto = resultado.nivelModelo === 4;
-
   let agua;
-  if (motivos.includes("agua-cheia")) {
+  if (resultado.medicaoTransbordando) {
     agua = { titulo: "Água em 100%: transbordando", texto: "O sensor mediu o bueiro cheio. O app mostra “Transbordando agora”: é medição, não previsão.", efeito: "medido" };
-  } else if (motivos.includes("agua-alta")) {
-    agua = noTeto
-      ? { titulo: `Água em ${entrada.agua}%: perto do limite`, texto: "A partir de 80% o nível sobe um degrau. Aqui ele já está no máximo.", efeito: null }
-      : { titulo: `Água em ${entrada.agua}%: perto do limite`, texto: "A partir de 80% o nível sobe um degrau, mesmo que a chance pela chuva seja pequena.", efeito: "sobe" };
+  } else if (fatorAgua > 1.02) {
+    agua = { titulo: `Água em ${entrada.agua}%: enchendo`, texto: `Sinal de que a água não está escoando: a chance fica ${vezes(fatorAgua)} maior.`, efeito: "sobe" };
   } else {
-    agua = { titulo: `Água em ${entrada.agua}%`, texto: "Abaixo de 80% a leitura não muda o nível.", efeito: null };
+    agua = { titulo: `Água em ${entrada.agua}%`, texto: "Até a metade do bueiro, a leitura não muda a chance.", efeito: null };
   }
 
   let lixo;
-  if (motivos.includes("lixo")) {
-    lixo = noTeto
-      ? { titulo: `Lixo em ${entrada.lixo}% com chuva`, texto: "Com muito lixo a água escoa pior e o nível sobe um degrau. Aqui ele já está no máximo.", efeito: null }
-      : { titulo: `Lixo em ${entrada.lixo}% com chuva`, texto: "Com muito lixo a água escoa pior: o nível sobe um degrau.", efeito: "sobe" };
-  } else if (entrada.lixo >= 60 && !motivos.includes("agua-cheia")) {
-    lixo = { titulo: `Lixo em ${entrada.lixo}%, sem chuva`, texto: "Muito lixo só pesa quando chove.", efeito: null };
+  if (fatorLixo > 1.02) {
+    lixo = { titulo: `Lixo em ${entrada.lixo}% com chuva`, texto: `Com lixo a água escoa pior: a chance fica ${vezes(fatorLixo)} maior.`, efeito: "sobe" };
+  } else if (entrada.lixo > 30 && mm < 0.5) {
+    lixo = { titulo: `Lixo em ${entrada.lixo}%, sem chuva`, texto: "O lixo só pesa quando chove: é ele que impede a água de escoar.", efeito: null };
   } else {
-    lixo = { titulo: `Lixo em ${entrada.lixo}%`, texto: "Abaixo de 60% a leitura não muda o nível.", efeito: null };
+    lixo = { titulo: `Lixo em ${entrada.lixo}%`, texto: "Até 30%, a leitura não muda a chance.", efeito: null };
   }
 
   return { ...resultado, rotuloChuva, passos: [chuva, lugarPasso, { id: "agua", ...agua }, { id: "lixo", ...lixo }] };
 }
 
-/** Frase que liga os dois passos: o que a IA disse e o que o sensor fez com isso. */
+/**
+ * Frase que mostra o quanto o sensor pesou: a chance só pela chuva e pelo lugar, e a chance com
+ * as leituras do bueiro.
+ */
 export function fraseDoResultado(resultado) {
-  const daIa = rotuloNivel(resultado.nivelModelo).toLowerCase();
-  if (resultado.medicaoTransbordando) return `Pela chuva e pelo lugar a IA diria ${daIa}. Mas o sensor mediu o bueiro cheio, e a medição vale mais que a previsão.`;
-  if (resultado.nivel > resultado.nivelModelo) return `Pela chuva e pelo lugar a IA diz ${daIa}. A leitura do sensor sobe o nível para ${rotuloNivel(resultado.nivel).toLowerCase()}.`;
-  return `Pela chuva e pelo lugar a IA diz ${daIa}. A leitura do sensor não muda o nível.`;
+  const semSensor = textoProbabilidade(resultado.probabilidadeSemSensor);
+  if (resultado.medicaoTransbordando) return "O sensor mediu o bueiro cheio. Isso é medição, e vale mais que qualquer previsão.";
+  const fator = resultado.fatorAgua * resultado.fatorLixo;
+  if (fator <= 1.02) return `A chance vem da chuva e do lugar: ${semSensor}. As leituras do sensor estão baixas e não mudam a conta.`;
+  const subiu = resultado.nivel > resultado.nivelModelo
+    ? ` O nível vai de ${rotuloNivel(resultado.nivelModelo).toLowerCase()} para ${rotuloNivel(resultado.nivel).toLowerCase()}.`
+    : "";
+  return `Só pela chuva e pelo lugar a chance seria ${semSensor}. Com o que o sensor mede, ela fica ${vezes(fator)} maior.${subiu}`;
 }
 
 /** Os limiares do modelo em texto, para a explicação dos níveis. */

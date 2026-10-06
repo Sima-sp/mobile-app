@@ -3,7 +3,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { CLIMAS, LIMIARES, PONTOS_BASE, criarEstadoDemo, emTransicao, gerarPontosDemo, intensidades, situacaoDoPonto, trocarClima } from "./demo.js";
+import {
+  CLIMAS, LIMIARES, PONTOS_BASE, chanceComSensor, criarEstadoDemo, emTransicao, fatorDaAgua, fatorDoLixo, gerarPontosDemo, intensidades,
+  situacaoDoPonto, trocarClima,
+} from "./demo.js";
 import { PONTOS_CAPITAL } from "./pontosCapital.js";
 import { statusAgora } from "./modelo.js";
 
@@ -54,8 +57,8 @@ test("cada clima é visivelmente pior que o anterior", () => {
   const [sol, chuvisco, forte, extrema] = ["sol", "chuvisco", "chuva-forte", "chuva-extrema"].map(niveis);
   // chuvisco: maioria em baixo, alguns em médio (os entupidos), ninguém em alto
   assert.ok(chuvisco[0] > 90 && chuvisco[1] > 10 && chuvisco[2] + chuvisco[3] === 0, `chuvisco ${chuvisco}`);
-  // chuva forte: de tudo um pouco, com críticos
-  assert.ok(forte[0] > 10 && forte[1] > 40 && forte[2] > 15 && forte[3] > 3, `forte ${forte}`);
+  // chuva forte: de tudo um pouco, com alguns críticos
+  assert.ok(forte[0] > 10 && forte[1] > 40 && forte[2] > 15 && forte[3] >= 2, `forte ${forte}`);
   // chuva extrema: a maioria em alto ou crítico
   assert.ok(extrema[2] + extrema[3] > 90 && extrema[3] > 30, `extrema ${extrema}`);
   // nenhum ponto melhora quando a chuva aumenta
@@ -81,16 +84,34 @@ test("só a chuva extrema faz bueiro transbordar, e quem transborda é crítico"
   }
 });
 
-test("o nível segue os limiares do modelo e as regras do sensor", () => {
+test("a chance junta chuva, lugar e sensor, e o nível sai dela pelos limiares do modelo", () => {
+  const nivelDe = (chance) => (chance >= LIMIARES.critico ? 4 : chance >= LIMIARES.alto ? 3 : chance >= LIMIARES.medio ? 2 : 1);
   for (const clima of CLIMAS) {
     for (const p of gerarPontosDemo(AGORA, criarEstadoDemo(clima.id))) {
-      const esperadoPeloModelo = p.probabilidade >= LIMIARES.critico ? 4 : p.probabilidade >= LIMIARES.alto ? 3 : p.probabilidade >= LIMIARES.medio ? 2 : 1;
-      assert.equal(p.nivelModelo, esperadoPeloModelo, p.codigo);
-      assert.ok(p.nivel >= p.nivelModelo, p.codigo); // o sensor nunca desce o nível
+      // O sensor entra por cima da chance da chuva e do lugar, e nunca a diminui.
+      assert.ok(p.probabilidade >= p.probabilidadeSemSensor, p.codigo);
+      assert.ok(p.probabilidade > 0 && p.probabilidade < 1, p.codigo);
+      const esperada = chanceComSensor(p.probabilidadeSemSensor, { agua: p.agua, lixo: p.lixo, chuvaRecente3h: p.chuvaRecente3h }).probabilidade;
+      assert.equal(p.probabilidade, esperada, p.codigo);
+      assert.equal(p.nivelModelo, nivelDe(p.probabilidadeSemSensor), p.codigo);
+      assert.equal(p.nivel, p.medicaoTransbordando ? 4 : nivelDe(p.probabilidade), p.codigo);
       assert.equal(p.ajusteSensorAplicado, p.nivel > p.nivelModelo, p.codigo);
-      if (p.nivel > p.nivelModelo) assert.ok(p.agua >= 80 || p.lixo >= 60, `${p.codigo} subiu sem motivo`);
+      // Quem subiu de nível por causa do sensor tem leitura que justifica.
+      if (p.nivel > p.nivelModelo) assert.ok(p.agua > 50 || p.lixo > 30, `${p.codigo} subiu sem motivo`);
     }
   }
+});
+
+test("pesos do sensor: nada até a metade de água e 30% de lixo; daí para cima, cada vez mais", () => {
+  assert.deepEqual([0, 30, 50].map(fatorDaAgua), [1, 1, 1]);
+  assert.ok(Math.abs(fatorDaAgua(65) - 2) < 1e-9 && Math.abs(fatorDaAgua(80) - 6) < 1e-9 && Math.abs(fatorDaAgua(99) - 12) < 1e-9);
+  assert.equal(fatorDaAgua(100), 12);
+  for (let a = 1; a <= 100; a += 1) assert.ok(fatorDaAgua(a) >= fatorDaAgua(a - 1), `água ${a}`);
+  assert.equal(fatorDoLixo(90, 0), 1, "sem chuva o lixo não pesa");
+  assert.deepEqual([10, 30].map((l) => fatorDoLixo(l, 12)), [1, 1]);
+  assert.ok(Math.abs(fatorDoLixo(60, 12) - 3) < 1e-9 && Math.abs(fatorDoLixo(100, 12) - 5) < 1e-9);
+  // Sem leitura (sensor fora do ar), a chance fica a da chuva e do lugar.
+  assert.equal(chanceComSensor(0.02, { agua: null, lixo: null, chuvaRecente3h: 20 }).probabilidade, 0.02);
 });
 
 test("quem alaga mais e fica perto de córrego reage mais", () => {

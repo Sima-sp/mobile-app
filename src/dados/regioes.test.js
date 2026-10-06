@@ -72,8 +72,8 @@ test("na demonstração: sem aviso com sol e chuvisco, avisos com chuva forte, t
   const regioesCom = (clima) => avisosPorRegiao(gerarPontosDemo(AGORA, criarEstadoDemo(clima)), AGORA);
   for (const clima of ["sol", "chuvisco"]) assert.equal(regioesCom(clima).filter((r) => r.nivel).length, 0, clima);
   const forte = regioesCom("chuva-forte");
-  assert.ok(forte.filter((r) => r.nivel === 3).length >= 4, "chuva forte deixa algumas regiões em risco alto");
-  assert.ok(forte.filter((r) => r.nivel === 2).length >= 2, "e outras em atenção");
+  assert.ok(forte.filter((r) => r.nivel === 3).length >= 4, "chuva forte deixa várias regiões em risco alto");
+  assert.ok(forte.filter((r) => r.cobertura && r.nivel !== 3).length >= 2, "mas não todas");
   const extrema = regioesCom("chuva-extrema");
   const cobertas = extrema.filter((r) => r.cobertura);
   assert.equal(cobertas.length, 15);

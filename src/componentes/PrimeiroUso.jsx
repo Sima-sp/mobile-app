@@ -101,7 +101,7 @@ const PASSO_NIVEIS = {
 };
 const PASSO_MEDIDO = {
   id: "medido", titulo: "Medido pelo sensor, previsto pela IA", desenho: <DesenhoMedidoPrevisto />,
-  texto: "Toque numa tampa. Água e lixo são leituras do sensor. A chance de alagar é uma estimativa da inteligência artificial: um risco, não uma certeza.",
+  texto: "Toque numa tampa. Água e lixo são leituras do sensor. Com elas, a chuva e o histórico do lugar, a IA estima a chance de alagar: um risco, não uma certeza.",
 };
 const PASSO_CLIMA = {
   id: "clima", titulo: "Faça chover", desenho: <DesenhoClima />,

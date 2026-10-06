@@ -2,7 +2,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CENARIOS, LUGARES_DO_SIMULADOR, forcaDaChuva, fraseDoResultado, lugarDoPonto, responder, rotuloDaChuva } from "./simulador.js";
+import { CENARIOS, LUGARES_DO_SIMULADOR, forcaDaChuva, fraseDoResultado, lugarDoPonto, responder, rotuloDaChuva, vezes } from "./simulador.js";
 import { chuvaEm3h } from "./demo.js";
 
 const [pouco, asVezes, muito] = LUGARES_DO_SIMULADOR;
@@ -28,39 +28,54 @@ test("a mesma chuva dá mais chance no lugar que mais alaga", () => {
     const chances = LUGARES_DO_SIMULADOR.map((lugar) => responder(entrada(id), lugar).probabilidade);
     assert.ok(chances[0] < chances[1] && chances[1] < chances[2], id);
   }
-  assert.equal(responder(entrada("temporal"), muito).nivelModelo, 4);
+  assert.equal(responder(entrada("temporal"), muito).nivel, 4);
   assert.ok(responder(entrada("temporal"), pouco).nivelModelo <= 2);
 });
 
-test("o sensor muda o nível, nunca a chance", () => {
+test("a leitura do sensor entra na chance: água e lixo multiplicam, nunca diminuem", () => {
   const base = { chuva: 0.5, agua: 20, lixo: 20 };
-  const semAjuste = responder(base, asVezes);
-  const aguaAlta = responder({ ...base, agua: 85 }, asVezes);
-  const comLixo = responder({ ...base, agua: 85, lixo: 80 }, asVezes);
-  assert.equal(aguaAlta.probabilidade, semAjuste.probabilidade);
-  assert.equal(comLixo.probabilidade, semAjuste.probabilidade);
-  assert.equal(aguaAlta.nivel, semAjuste.nivel + 1);
-  assert.equal(comLixo.nivel, Math.min(4, semAjuste.nivel + 2));
+  const semPeso = responder(base, asVezes);
+  const aguaAlta = responder({ ...base, agua: 82 }, asVezes);
+  const comLixo = responder({ ...base, agua: 82, lixo: 80 }, asVezes);
+  assert.equal(semPeso.probabilidade, semPeso.probabilidadeSemSensor, "leituras baixas não mudam a conta");
+  assert.ok(aguaAlta.probabilidade > semPeso.probabilidade * 5, "água em 82% multiplica a chance por mais de 5");
+  assert.ok(comLixo.probabilidade > aguaAlta.probabilidade * 3, "lixo em 80% com chuva multiplica por mais de 3");
+  // A chance só pela chuva e pelo lugar é a mesma nos três casos: o sensor entra por cima dela.
+  assert.equal(aguaAlta.probabilidadeSemSensor, semPeso.probabilidadeSemSensor);
+  assert.equal(comLixo.probabilidadeSemSensor, semPeso.probabilidadeSemSensor);
+  assert.ok(aguaAlta.nivel >= semPeso.nivel && comLixo.nivel >= aguaAlta.nivel);
   assert.equal(aguaAlta.passos.find((p) => p.id === "agua").efeito, "sobe");
   assert.equal(comLixo.passos.find((p) => p.id === "lixo").efeito, "sobe");
-  assert.match(fraseDoResultado(aguaAlta), /sobe o nível/);
-  assert.match(fraseDoResultado(semAjuste), /não muda o nível/);
+  assert.match(fraseDoResultado(comLixo), /Com o que o sensor mede, ela fica .+ vezes maior/);
+  assert.match(fraseDoResultado(semPeso), /não mudam a conta/);
 });
 
-test("com o nível já em crítico, a leitura alta não aparece como subida", () => {
-  const r = responder({ chuva: 1, agua: 85, lixo: 80 }, muito);
-  assert.equal(r.nivelModelo, 4);
+test("o nível sai da chance final: mexer no sensor pode mudar o nível", () => {
+  const seco = responder({ chuva: 0.5, agua: 20, lixo: 20 }, asVezes);
+  const entupido = responder(entrada("entupido"), asVezes);
+  assert.equal(seco.nivel, 1);
+  assert.equal(entupido.nivelModelo, 1, "pela chuva e pelo lugar seria baixo");
+  assert.equal(entupido.nivel, 3, "com o bueiro entupido vira alto");
+  assert.match(fraseDoResultado(entupido), /O nível vai de baixo para alto/);
+});
+
+test("a chance nunca passa de 100%, mesmo com tudo no máximo", () => {
+  const r = responder({ chuva: 1, agua: 99, lixo: 100 }, muito);
+  assert.ok(r.probabilidade > 0.9 && r.probabilidade < 1);
   assert.equal(r.nivel, 4);
-  assert.equal(r.passos.find((p) => p.id === "agua").efeito, null);
-  assert.equal(r.passos.find((p) => p.id === "lixo").efeito, null);
-  assert.match(r.passos.find((p) => p.id === "agua").texto, /já está no máximo/);
-  assert.match(fraseDoResultado(r), /não muda o nível/);
 });
 
-test("lixo alto sem chuva não sobe o nível", () => {
+test("lixo alto sem chuva não muda a chance", () => {
   const r = responder({ chuva: 0, agua: 10, lixo: 90 }, muito);
+  assert.equal(r.probabilidade, r.probabilidadeSemSensor);
   assert.equal(r.nivel, 1);
   assert.match(r.passos.find((p) => p.id === "lixo").titulo, /sem chuva/);
+});
+
+test("bueiro quase cheio em dia seco não aparece como risco baixo", () => {
+  const r = responder({ chuva: 0, agua: 92, lixo: 10 }, pouco);
+  assert.equal(r.nivelModelo, 1);
+  assert.ok(r.nivel >= 2);
 });
 
 test("água em 100% é transbordando: crítico e medido, em qualquer lugar e com qualquer chuva", () => {
@@ -68,11 +83,12 @@ test("água em 100% é transbordando: crítico e medido, em qualquer lugar e com
   assert.equal(r.nivel, 4);
   assert.equal(r.medicaoTransbordando, true);
   assert.equal(r.passos.find((p) => p.id === "agua").efeito, "medido");
-  assert.match(fraseDoResultado(r), /medição vale mais/);
+  assert.match(fraseDoResultado(r), /medição, e vale mais que qualquer previsão/);
 });
 
 test("os nomes da chuva e a conversão de milímetros para força", () => {
   assert.deepEqual([0, 2, 10, 30, 60].map(rotuloDaChuva), ["Sem chuva", "Chuvisco", "Chuva moderada", "Chuva forte", "Temporal"]);
   for (const forca of [0, 0.22, 0.68, 1]) assert.ok(Math.abs(forcaDaChuva(chuvaEm3h(forca)) - forca) < 0.01);
   assert.equal(forcaDaChuva(500), 1);
+  assert.deepEqual([2.94, 7.2, 12].map(vezes), ["2,9 vezes", "7,2 vezes", "12 vezes"]);
 });

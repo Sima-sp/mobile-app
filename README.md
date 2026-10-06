@@ -39,16 +39,16 @@ O aviso "Demonstração" fica sempre na tela. O que é real e o que é inventado
 
 - **Reais:** os lugares. São os pontos de alagamento recorrente que o modelo de IA conhece
   (`src/dados/pontosCapital.js`), com a frequência histórica de cada um.
-- **Inventados:** as leituras, a chuva e as previsões. Mas seguem a lógica do sistema de verdade
-  (`src/dados/demo.js`): quem alaga mais e está perto de córrego reage mais; a chance vira nível
-  pelos limiares reais do modelo; água em 100 % é "transbordando agora"; lixo alto com chuva sobe
-  um nível.
+- **Inventados:** as leituras, a chuva e as previsões. Mas seguem uma lógica só
+  (`src/dados/demo.js`): quem alaga mais e está perto de córrego reage mais; a leitura do sensor
+  entra na chance (ver "O sensor na previsão"); a chance vira nível pelos limiares reais do
+  modelo; água em 100 % é "transbordando agora".
 
 | Clima | O que aparece | Aviso por região |
 |---|---|---|
 | Sol | Tudo em nível baixo | Nenhum |
 | Chuvisco | Maioria em baixo; os bueiros com muito lixo vão para médio | Nenhum |
-| Chuva forte | De tudo um pouco, com alguns críticos; ruas pintadas em volta dos altos e críticos | 7 regiões em risco alto e 5 em atenção |
+| Chuva forte | De tudo um pouco, com alguns críticos; ruas pintadas em volta dos altos e críticos | 11 regiões em risco alto e 1 em atenção |
 | Chuva extrema | Maioria em alto ou crítico; cerca de 15 bueiros transbordando | As 15 regiões com cobertura em risco alto |
 
 Na primeira abertura o app mostra uma **apresentação de quatro passos** (ver "Primeiro uso"). Para
@@ -138,6 +138,35 @@ Para trocar de servidor: `VITE_ROTAS_URL` e `VITE_ENDERECOS_URL` no `.env.local`
 destino da rota (e o texto digitado na busca) são enviados a esses serviços. Para um app de
 produção, o certo é ter um servidor de rotas próprio: o público é emprestado e tem esses limites.
 
+## O sensor na previsão
+
+No SIMA o sensor não é só um medidor: a leitura dele **entra na conta da chance**. Na
+demonstração e no simulador (`src/dados/demo.js`):
+
+1. A chuva e o lugar dão uma primeira chance de alagar nas próximas 3 horas (`previsaoPelaChuva`).
+2. A leitura do bueiro multiplica essa chance (`chanceComSensor`):
+   - **água:** até a metade não muda nada; 2 vezes em 65 %, 6 vezes em 80 %, 12 vezes quase cheio;
+   - **lixo:** só pesa com chuva; a partir de 30 %, 3 vezes em 60 % e 5 vezes com o bueiro tomado.
+3. O nível sai da chance final, pelos limiares do modelo. Água em 100 % é "transbordando agora":
+   crítico, e aí é medição, não previsão.
+
+A leitura nunca diminui a chance, e sem leitura (sensor fora do ar) vale a chance da chuva e do
+lugar. O app guarda as duas (`probabilidade` e `probabilidadeSemSensor`) para mostrar o quanto o
+sensor pesou: na tela do bueiro e no simulador.
+
+**O que isto é e o que não é.** Os pesos acima são uma **regra escolhida pelo grupo**, não algo
+que a IA aprendeu: não existe histórico de leituras de sensor para treinar. A tela "Como a IA
+funciona" diz isso ("O que ainda é regra"). Treinar com as leituras da demonstração não
+resolveria: elas são geradas por esta mesma regra, então o modelo só aprenderia de volta o que
+foi inventado. O caminho é acumular leituras de verdade e, com elas, trocar a regra por
+aprendizado; é o ponto de `chanceComSensor`.
+
+**Diferença para o serviço de IA de hoje.** No `ml-service` v1 o modelo calcula a chance só com
+a chuva e o lugar, e a leitura do sensor sobe o **nível** por regra (água ≥ 80 % ou lixo ≥ 60 %
+com chuva), sem mexer na porcentagem. Com o app ligado ao backend, o que aparece é isso. Para o
+sistema de verdade se comportar como a demonstração, a mesma conta precisa entrar no `ml-service`
+(e o backend mandar a chance já com o sensor).
+
 ## Ruas afetadas
 
 Quando um bueiro está em nível **alto ou crítico** (ou transbordando), o trecho de rua em volta
@@ -189,10 +218,12 @@ o aviso da região (quando se preparar).
 
 1. **Simulador.** A pessoa muda a chuva, o lugar (três lugares reais: um que alaga pouco, um às
    vezes e o que mais alaga) e as leituras do sensor (água e lixo). A resposta fica presa no alto
-   da tela e muda na hora: nível, chance e uma frase que separa o que a IA disse do que o sensor
-   acrescentou. Há atalhos prontos ("Dia seco", "Temporal", "Bueiro entupido"...).
+   da tela e muda na hora: nível, chance e uma frase que mostra o quanto o sensor pesou ("só pela
+   chuva e pelo lugar seria 0,3 %; com o que o sensor mede, fica 25 vezes maior"). Há atalhos
+   prontos ("Dia seco", "Temporal", "Bueiro entupido"...).
 2. **O caminho de uma previsão**, em cinco passos.
-3. **Quanto ela acerta**, com os números dos testes do modelo v1 e o que ela não vê.
+3. **Quanto ela acerta**, com os números dos testes do modelo v1, o que ainda é regra (o peso do
+   sensor) e o que ela não vê.
 
 O simulador usa a mesma conta da demonstração do mapa (`src/dados/simulador.js` e `demo.js`): é
 uma versão simplificada para explicar, **não** o modelo rodando no aparelho, e a tela diz isso.
@@ -384,8 +415,10 @@ hospedagem estática sem configurar o servidor.
   está o risco sem inventar uma mancha.
 - **Aviso por região calculado no app.** A regra é a do serviço de IA; a origem dos dados troca
   quando o formato de `/previsoes/regioes` for conferido (ver "Aviso por região").
-- **O sensor não muda a chance, nem na demonstração.** Na demonstração e no simulador, água e lixo
-  mexem só no nível, como no sistema de verdade (recomendação R5 do serviço de IA).
+- **O sensor entra na chance.** Decisão do Guilherme em 06/10/2026: o sensor foi escolhido para
+  ajudar a previsão, não só para medir. Na demonstração e no simulador, água e lixo multiplicam a
+  chance, e o nível sai dela. Isso muda a recomendação R5 do serviço de IA (lá o sensor mexe só no
+  nível); ver "O sensor na previsão".
 - **Tela larga.** A partir de 900 px as telas viram uma coluna à esquerda e o mapa continua
   visível — é o que permite usar o mesmo app como "mapa web" da landing.
 - **Código do bueiro.** O banco só tem id, posição e vizinhança. O app monta o código com a sigla
@@ -411,6 +444,8 @@ hospedagem estática sem configurar o servidor.
 | Perfil e conta | Login (JWT) no backend |
 | Aviso por região vindo do servidor | Formato de `GET /previsoes/regioes` (hoje o app calcula com a mesma regra) |
 | Trecho de rua para sensores fora dos pontos conhecidos | Rodar `npm run ruas` com a posição dos sensores |
+| Chance com o sensor também nos dados reais | A conta de "O sensor na previsão" no `ml-service`, e o backend mandando a chance antes e depois do sensor |
+| A IA aprender o peso do sensor | Meses de leituras de verdade, com registro de quando alagou |
 | Leitura do sensor com dados reais | `nivelAgua`, `porcentagemLixo`, `dataLeitura` e `statusSensor` em `/previsoes` |
 | Gráfico de 12 h com dados reais | Histórico de leituras por sensor (hoje só na demonstração) |
 | App nas lojas (APK) | Capacitor |

@@ -290,7 +290,7 @@
 .ia-nivel { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .ia-chance { margin-top: 4px; font-size: 15px; color: var(--bone-300); }
 .ia-chance b { color: var(--bone-50); font-weight: 700; font-variant-numeric: tabular-nums; }
-.ia-frase { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sep); min-height: 3.9em; }
+.ia-frase { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sep); min-height: calc(12px + 4 * 1.4em); }
 .ia-cenarios { display: flex; gap: 8px; padding: 14px 16px 0; overflow-x: auto; scrollbar-width: none; }
 .ia-cenarios::-webkit-scrollbar { display: none; }
 .ia-grupo { padding: 4px 0; }
@@ -318,7 +318,7 @@
 .ia-faixa:focus-visible { outline: none; }
 .ia-faixa:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
 .ia-faixa:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
-/* Risco no ponto em que a leitura passa a mudar o nível (80% de água, 60% de lixo). O polegar do
+/* Risco no ponto em que a leitura passa a pesar na chance (50% de água, 30% de lixo). O polegar do
    controle tem 28 px, então o centro dele anda de 14 px a (100% - 14 px). */
 .ia-marca { position: absolute; top: 9px; width: 2px; height: 26px; margin-left: -1px; border-radius: 1px; background: var(--bone-500);
   pointer-events: none; }

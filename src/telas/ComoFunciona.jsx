@@ -1,7 +1,8 @@
 // Tela "Como a IA funciona": mostra a inteligência artificial do SIMA em funcionamento, sem
 // termos técnicos. Tem três partes:
 //   1. um SIMULADOR: a pessoa muda a chuva, o lugar e as leituras do sensor e vê a resposta
-//      (chance, nível e o porquê) mudar na hora;
+//      (chance, nível e o porquê) mudar na hora. A IA junta as três coisas: a leitura do sensor
+//      entra na conta da chance, não é só uma medição mostrada ao lado;
 //   2. o caminho de uma previsão, em cinco passos;
 //   3. quanto ela acerta, dito com franqueza (números dos testes do modelo v1).
 //
@@ -26,13 +27,13 @@ const PASSOS = [
   { titulo: "Ela aprendeu com o passado",
     texto: "Estudou 12.621 alagamentos registrados em São Paulo desde 2011 e a chuva de cada hora. Assim aprendeu em que condições cada lugar costuma alagar." },
   { titulo: "A cada 10 minutos ela olha de novo",
-    texto: "Recebe a chuva das últimas horas em cada ponto monitorado, o dia e a hora, e o histórico do lugar." },
-  { titulo: "Dá uma chance para cada bueiro",
+    texto: "Recebe a chuva das últimas horas em cada ponto, o histórico do lugar e a última leitura do sensor do bueiro: água e lixo." },
+  { titulo: "Calcula a chance pela chuva e pelo lugar",
     texto: "É a chance de alagar nas próximas 3 horas. Alagamento é raro, então os números são pequenos: 1% já é muito acima do normal." },
+  { titulo: "O sensor entra na conta",
+    texto: "Bueiro enchendo ou com muito lixo multiplica essa chance: é o sinal de que ali a água já não escoa. Bueiro cheio vira “Transbordando agora”, que é medição, não previsão." },
   { titulo: "A chance vira um nível", niveis: true,
     texto: `Médio a partir de ${LIMIARES_EM_TEXTO[2]}, alto a partir de ${LIMIARES_EM_TEXTO[3]} e crítico a partir de ${LIMIARES_EM_TEXTO[4]}. É o nível que aparece na tampa.` },
-  { titulo: "O sensor tem a palavra final",
-    texto: "Água alta ou muito lixo no bueiro sobem o nível. Bueiro cheio vira “Transbordando agora”: aí é medição, não previsão." },
 ];
 
 export default function ComoFunciona() {
@@ -68,7 +69,8 @@ export default function ComoFunciona() {
   const lugar = inicio.lugares.find((l) => l.id === idLugar) ?? inicio.lugares[0];
   const resposta = responder({ chuva: chuva / 100, agua, lixo }, lugar);
   const cor = corNivel(resposta.nivel);
-  const chance = textoProbabilidade(resposta.probabilidade);
+  // "< 0,1%" no lugar de "menos de 0,1%": a linha da chance não quebra em duas.
+  const chance = textoProbabilidade(resposta.probabilidade).replace("menos de ", "< ");
 
   const aplicar = (cenario) => {
     setChuva(Math.round(cenario.chuva * 100));
@@ -82,8 +84,8 @@ export default function ComoFunciona() {
     <Tela titulo="Como a IA funciona">
       <CabecalhoTela titulo="Como a IA funciona" />
       <p className="sub ia-intro">
-        A inteligência artificial do SIMA estima a chance de cada bueiro alagar nas próximas 3 horas.
-        Mude a chuva, o lugar e o sensor e veja o que ela responde.
+        A inteligência artificial do SIMA junta três coisas para estimar a chance de cada bueiro alagar nas próximas 3 horas:
+        a chuva, o histórico do lugar e o que o sensor mede. Mude cada uma e veja a resposta.
       </p>
 
       {/* A resposta fica presa no alto enquanto a pessoa mexe nos controles. */}
@@ -110,7 +112,7 @@ export default function ComoFunciona() {
         ))}
       </div>
 
-      <h2 className="grp-t">O que a IA olha</h2>
+      <h2 className="grp-t">A chuva e o lugar</h2>
       <div className="grp ia-grupo">
         <Faixa id="ia-chuva" rotulo="Chuva nas últimas 3 horas" valor={chuva} aoMudar={setChuva} texto={passo("chuva").titulo} nota={passo("chuva").texto} />
         <div className="ia-ctl">
@@ -127,13 +129,13 @@ export default function ComoFunciona() {
         </div>
       </div>
 
-      <h2 className="grp-t">O que o sensor mede</h2>
+      <h2 className="grp-t">O sensor do bueiro</h2>
       <div className="grp ia-grupo">
-        <Faixa id="ia-agua" rotulo="Água no bueiro" valor={agua} aoMudar={setAgua} texto={passo("agua").titulo} nota={passo("agua").texto} efeito={passo("agua").efeito} marca={80} />
-        <Faixa id="ia-lixo" rotulo="Lixo no bueiro" valor={lixo} aoMudar={setLixo} texto={passo("lixo").titulo} nota={passo("lixo").texto} efeito={passo("lixo").efeito} marca={60} />
+        <Faixa id="ia-agua" rotulo="Água no bueiro" valor={agua} aoMudar={setAgua} texto={passo("agua").titulo} nota={passo("agua").texto} efeito={passo("agua").efeito} marca={50} />
+        <Faixa id="ia-lixo" rotulo="Lixo no bueiro" valor={lixo} aoMudar={setLixo} texto={passo("lixo").titulo} nota={passo("lixo").texto} efeito={passo("lixo").efeito} marca={30} />
       </div>
       <p className="micro ia-rodape">
-        O simulador é uma versão simplificada, feita para explicar. O modelo de verdade roda no servidor do SIMA e segue a mesma lógica.
+        O simulador é uma versão simplificada, feita para explicar. No servidor do SIMA, quem calcula a chance pela chuva e pelo lugar é um modelo treinado com os registros.
       </p>
 
       <h2 className="grp-t">O caminho de uma previsão</h2>
@@ -167,6 +169,13 @@ export default function ComoFunciona() {
           </p>
         </div>
         <div className="plate ia-fato">
+          <p className="ia-fato-t">O que ainda é regra</p>
+          <p className="small" style={{ marginTop: 6 }}>
+            O peso da chuva e do lugar ela aprendeu com os registros. O peso do sensor, por enquanto, é uma regra definida pelo grupo:
+            ainda não há leituras de verdade suficientes para ela aprender sozinha. Os 31% acima são da IA sem o sensor.
+          </p>
+        </div>
+        <div className="plate ia-fato">
           <p className="ia-fato-t">O que ela não vê</p>
           <p className="small" style={{ marginTop: 6 }}>
             A chuva chega a ela como estimativa para áreas de alguns quilômetros: uma pancada muito localizada pode passar sem aviso.
@@ -187,7 +196,7 @@ export default function ComoFunciona() {
 
 /**
  * Controle deslizante de 0 a 100, com o valor dito em palavras ao lado e uma nota embaixo.
- * `marca` desenha um risco no ponto em que a leitura passa a mudar o nível.
+ * `marca` desenha um risco no ponto em que a leitura passa a pesar na chance.
  */
 function Faixa({ id, rotulo, valor, aoMudar, texto, nota, efeito = null, marca = null }) {
   return (

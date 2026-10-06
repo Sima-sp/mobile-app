@@ -1,6 +1,7 @@
 // Tela de um bueiro: tudo o que se sabe sobre o ponto.
 // Regra de ouro do SIMA: o que foi MEDIDO pelo sensor (água, lixo, hora da leitura) aparece
-// separado do que foi PREVISTO pela IA (nível de risco e chance nas próximas horas).
+// separado do que foi PREVISTO pela IA (nível de risco e chance nas próximas horas). A previsão
+// usa a medição (bueiro enchendo aumenta a chance), mas a tela não mistura os dois números.
 
 import { useNavigate, useParams } from "react-router";
 import { usePontos } from "../dados/PontosContexto";
@@ -229,6 +230,14 @@ function PlacaPrevisao({ ponto, agora }) {
   }
 
   const chance = textoProbabilidade(ponto.probabilidade);
+  // O quanto o sensor pesou. Quando a origem informa a chance antes e depois da leitura (hoje, a
+  // demonstração), a frase mostra as duas; senão, diz só a mudança de nível.
+  let pesoDoSensor = null;
+  if (ponto.probabilidadeSemSensor && ponto.probabilidade > ponto.probabilidadeSemSensor * 1.05) {
+    pesoDoSensor = `Só pela chuva e pelo lugar a chance seria ${textoProbabilidade(ponto.probabilidadeSemSensor)}. A leitura do sensor levou a ${chance}.`;
+  } else if (ponto.ajusteSensorAplicado && ponto.nivelModelo && ponto.nivelModelo < nivel) {
+    pesoDoSensor = `Pela chuva o risco seria ${rotuloNivel(ponto.nivelModelo).toLowerCase()}; a leitura do sensor levou a ${rotuloNivel(nivel).toLowerCase()}.`;
+  }
   return (
     <div className="plate bu-ia">
       <div className="bu-ia-num">
@@ -240,11 +249,7 @@ function PlacaPrevisao({ ponto, agora }) {
         <p className="small" style={{ marginTop: 6 }}>
           Risco de alagar nas próximas {ponto.janelaHoras} h, pela chuva{ponto.semLeituraSensor ? " (sem a leitura do sensor)" : " e pelas leituras deste ponto"}.
         </p>
-        {ponto.ajusteSensorAplicado && ponto.nivelModelo && ponto.nivelModelo < nivel ? (
-          <p className="micro" style={{ marginTop: 8 }}>
-            Pela chuva o risco seria {rotuloNivel(ponto.nivelModelo).toLowerCase()}; a leitura do sensor levou a {rotuloNivel(nivel).toLowerCase()}.
-          </p>
-        ) : null}
+        {pesoDoSensor ? <p className="micro" style={{ marginTop: 8 }}>{pesoDoSensor}</p> : null}
         {chance ? <p className="micro" style={{ marginTop: 8 }}>Alagamento é raro: na maior parte do tempo essa chance fica abaixo de 0,5%.</p> : null}
         <p className="micro" style={{ marginTop: 8 }}>É uma estimativa — não uma certeza. Feita às {horaCurta(ponto.geradaEm)}.</p>
       </div>

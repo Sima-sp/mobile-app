@@ -149,6 +149,8 @@ test("cartão do bueiro: três números, com traço quando falta o dado", () => 
   assert.equal(valores({ ...ponto, probabilidade: null })[2], "Risco em 3 h: Alto");
   assert.equal(valores({ ...ponto, validaAte: emMinutos(-1) })[2], "Chance em 3 h: —");
   assert.equal(valores({ ...ponto, nivel: null, status: "SEM_PREVISAO" })[2], "Chance em 3 h: —");
+  // Bueiro cheio é medição: no lugar da chance, "agora".
+  assert.equal(valores({ ...ponto, agua: 100, nivel: 4, medicaoTransbordando: true })[2], "Transbordando: Agora");
 });
 
 test("bairros: contagem por nível e ordem do pior para o mais tranquilo", () => {
