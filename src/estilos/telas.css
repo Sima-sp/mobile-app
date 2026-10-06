@@ -1,5 +1,5 @@
 /* Estilos de cada tela do app. Prefixos: app- (casca), mp- (mapa), mk- (marcadores), ms- (cartão do bueiro),
-   bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção).
+   rt- (rotas), bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção).
    Os componentes compartilhados (vidro, listas, botões) ficam em base.css. */
 
 /* ── Casca do app ──
@@ -75,6 +75,19 @@
 .mbar-av:hover { background: var(--fill-3); }
 .mbar-oculta { opacity: 0; transform: translateY(18px); pointer-events: none; }
 
+/* Botão de rotas: a ação principal do mapa, por isso é o único botão azul da tela. Fica acima da
+   barra de busca, à direita, onde os apps de mapa colocam o "como chegar". */
+.mp-rotas { position: absolute; right: 14px; bottom: calc(var(--base-segura) + 108px); z-index: 28; width: 58px; height: 58px;
+  border: 0; border-radius: 50%; padding: 0; background: var(--route-deep); color: #ffffff;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.24);
+  transition: transform 140ms ease-out, opacity 200ms ease-out, filter 160ms ease-out; }
+.mp-rotas .ico { width: 26px; height: 26px; }
+.mp-rotas:hover { filter: brightness(1.1); }
+.mp-rotas:active { transform: scale(0.95); }
+.mp-rotas-oculto { opacity: 0; transform: translateY(12px); pointer-events: none; }
+@media (min-width: 900px) { .mp-rotas { right: auto; left: calc(var(--coluna) - 68px); } }
+
 /* Cartão ao tocar num bueiro, no padrão dos apps de mapa: cabeçalho, faixa de números, ações. */
 .ms { position: absolute; left: 8px; right: 8px; bottom: calc(var(--base-segura) + 8px); z-index: 40; border-radius: 38px; padding: 7px 16px 16px;
   transition: transform 440ms cubic-bezier(.2,.85,.2,1), visibility 0s; }
@@ -96,7 +109,8 @@
 .ms-fato .ms-vazio { color: var(--bone-500); font-weight: 600; }
 .ms-acoes { display: flex; gap: 10px; margin-top: 14px; }
 .ms-acao { flex: 1; min-width: 0; border-radius: 25px; font-size: 16.5px; }
-.ms-acao-2 { flex: 0 1 auto; padding: 0 22px; color: var(--bone-50); }
+.ms-acao-2 { flex: 0 1 auto; padding: 0 22px; }
+.ms-acao-neutra { color: var(--bone-50); }
 
 /* Celular baixo: cartão mais compacto, para sobrar mapa em cima dele. */
 @media (max-height: 720px) {
@@ -110,6 +124,24 @@
 @media (min-width: 900px) {
   .mbar, .ms { right: auto; width: calc(var(--coluna) - 20px); }
   .ms { left: 10px; }
+}
+
+/* Cartão do modo rota (usa a moldura do cartão do bueiro). */
+.rt-head { padding-top: 14px; }
+.rt-km { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--bone-300); }
+.rt-frase { font-size: 15px; line-height: 1.4; color: var(--bone-300); margin-top: 6px; text-wrap: pretty; }
+.rt-vias { font-size: 13.5px; line-height: 1.35; color: var(--bone-500); margin-top: 4px; }
+.rt-opcoes { display: flex; width: 100%; margin-top: 14px; }
+.rt-opcoes button { flex: 1; height: 40px; padding: 0 8px; white-space: nowrap; }
+.rt-viagem { justify-content: space-between; gap: 12px; padding: 0 18px; font-size: 15px; font-weight: 600; color: var(--bone-100); }
+.rt-viagem-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-viagem-acao { flex: none; font-weight: 700; color: var(--route); }
+/* Celular baixo: o cartão da rota encolhe para sobrar mapa. */
+@media (max-height: 720px) {
+  .rt-por { display: none; }
+  .rt-frase { font-size: 14.5px; margin-top: 4px; }
+  .rt-opcoes { margin-top: 10px; }
+  .rt-opcoes button { height: 38px; }
 }
 
 /* ── Marcadores (tampas) sobre o mapa ── */
@@ -139,13 +171,13 @@
    biblioteca, que é carregado depois deste arquivo. */
 .mp .maplibregl-map { font-family: var(--f-ui); }
 .mp .maplibregl-canvas:focus-visible { outline: 2px solid var(--route); outline-offset: -2px; }
-.mp .maplibregl-ctrl-bottom-right { bottom: calc(var(--base-segura) + 100px); right: 6px; z-index: 5; }
+/* Os créditos ficam à esquerda e param antes do botão de rotas, que fica à direita. */
+.mp .maplibregl-ctrl-bottom-left { bottom: calc(var(--base-segura) + 100px); left: 6px; right: 84px; z-index: 5; }
 .mp .maplibregl-ctrl-attrib, .mp .maplibregl-ctrl-attrib.maplibregl-compact { background: var(--lg-tint-strong); color: var(--bone-300);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 14px; font-size: 11px; }
 .mp .maplibregl-ctrl-attrib a { color: var(--bone-100); }
 .mp .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 24px; }
 .thm-dark .mp .maplibregl-ctrl-attrib-button { filter: invert(1); background-color: transparent; }
-@media (min-width: 900px) { .mp .maplibregl-ctrl-bottom-right { bottom: 6px; } }
 
 /* ── Busca ── */
 .bs-bar { position: sticky; top: 0; z-index: 20; display: flex; gap: 10px; align-items: center;
@@ -200,6 +232,20 @@
 .bu-fact:last-child { border-bottom: 0; }
 .bu-fact b { color: var(--bone-50); font-weight: 700; text-align: right; }
 .bu-actions { display: flex; flex-direction: column; gap: 10px; padding: 24px 16px 16px; }
+
+/* ── Rotas (escolha de partida e destino) ── */
+.rt-intro { padding: 12px 20px 0; }
+.rt-campos { margin-top: 18px; }
+.rt-papel { margin: 0 0 1px; font-size: 13px; }
+.rt-marca { width: 14px; height: 14px; margin: 0 9px; border-radius: 50%; flex: none; }
+.rt-marca-origem { border: 3px solid var(--route-deep); }
+.rt-marca-destino { background: var(--route-deep); }
+.rt-ic-eu { color: var(--route); }
+.rt-aviso { padding: 12px 36px 0; color: var(--r3); }
+.rt-acoes { display: flex; gap: 10px; padding: 18px 16px 0; }
+.rt-tracar { flex: 1; }
+.rt-nota { padding: 18px 36px 0; }
+.row[disabled] { opacity: 0.6; cursor: default; }
 
 /* ── Menu ── */
 .mu-top { display: flex; align-items: center; justify-content: flex-end; padding: calc(var(--topo-seguro) + 10px) 16px 0;

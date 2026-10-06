@@ -1,9 +1,8 @@
 // Tela de busca: encontra bueiros (por código ou rua) e bairros entre os pontos monitorados.
-// A busca por qualquer endereço da cidade depende de um serviço de geocodificação e entra junto
-// com as rotas.
+// Ir até um endereço qualquer da cidade é com a tela de Rotas (src/telas/Rotas.jsx).
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { usePontos } from "../dados/PontosContexto";
 import { resumirBairros } from "../dados/bairros";
 import { semAcento } from "../dados/niveis";
@@ -119,7 +118,7 @@ export default function Busca() {
             </>
           ) : null}
           <p className="micro" style={{ padding: "22px 36px 0" }}>
-            Por enquanto a busca cobre os bueiros monitorados. A busca por qualquer endereço chega junto com as rotas.
+            Esta busca cobre os bueiros monitorados. Para ir a um endereço, use <Link to="/rotas">Rotas</Link>.
           </p>
         </>
       )}

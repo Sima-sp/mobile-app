@@ -86,6 +86,37 @@ localização em endereços `https`.
   sempre. Se nada estiver animando no seu computador, é provável que o sistema esteja pedindo
   movimento reduzido: escolha "Ligadas".
 
+## Rotas de carro
+
+O botão azul do mapa (ou "Desviar", no cartão de um bueiro em risco) abre as rotas. A pessoa
+escolhe o destino e a partida (a posição do aparelho, um endereço digitado ou um lugar conhecido)
+e o caminho aparece no mapa, com um cartão que diz:
+
+- **Caminho livre**: o caminho mais rápido não passa por bueiro em risco.
+- **Rota segura**: há um desvio que evita todos; o cartão diz quantos minutos ele custa a mais e
+  deixa comparar com o caminho mais rápido.
+- **Rota com menos risco**: o melhor desvio achado ainda passa por algum ponto.
+- **Sem desvio possível**: não há outro trajeto; o app mostra por quais bueiros o caminho passa.
+
+"Em risco" é nível alto, crítico ou transbordando. A rota se refaz sozinha quando essa lista muda;
+na demonstração, basta trocar o clima com a rota aberta.
+
+Como funciona (`src/rotas/planejar.js`): o app pede o caminho mais rápido, confere quais bueiros
+em risco ficam a até 35 m dele e, se houver, pede outro caminho mandando um quadrado em volta de
+cada um como área a evitar. Depois confere o caminho novo e, se preciso, tenta de novo (até três
+vezes).
+
+Serviços usados, os dois abertos, sem chave e com dados do OpenStreetMap:
+
+| Para quê | Serviço | Observação |
+|---|---|---|
+| Traçar a rota | [Valhalla](https://valhalla.github.io/valhalla/), no servidor público da FOSSGIS | Uso justo: um pedido por segundo. Aceita no máximo 100 vértices de áreas a evitar por pedido (cerca de 20 bueiros), medido em 06/10/2026. Sem garantia de disponibilidade. |
+| Buscar endereço | [Photon](https://photon.komoot.io/), da komoot | Limitado à Grande São Paulo. Se estiver fora do ar, os lugares conhecidos continuam funcionando. |
+
+Para trocar de servidor: `VITE_ROTAS_URL` e `VITE_ENDERECOS_URL` no `.env.local`. Só a partida e o
+destino da rota (e o texto digitado na busca) são enviados a esses serviços. Para um app de
+produção, o certo é ter um servidor de rotas próprio: o público é emprestado e tem esses limites.
+
 ## Cores e desenho
 
 A regra é a dos grandes apps de mapa (Google Maps, Apple Maps, Waze): **o fundo é neutro e a cor
@@ -105,7 +136,8 @@ fica para o que significa algo**. No SIMA: cinza é a rua, azul é a água e a a
   ficam bem visíveis de propósito.
 - O **cartão do bueiro** segue o padrão dos cartões de lugar desses apps: nome e situação, uma
   faixa com três números (água e lixo, medidos; chance de alagar, prevista) e os botões. O botão
-  azul é a ação principal. Hoje é "Ver detalhes"; quando as rotas existirem, passa a ser "Desviar".
+  azul é a ação principal: "Desviar" quando o bueiro está em risco (alto, crítico ou transbordando)
+  e "Ver detalhes" nos demais. No mapa, o botão azul redondo abre as rotas.
 - A landing (`landing/`) continua com a paleta azulada anterior. Os nomes dos tokens são os mesmos,
   então dá para levar a nova paleta para lá copiando os blocos `.thm-dark` e `.thm-light`.
 
@@ -172,7 +204,7 @@ index.html                 aplica o tema antes do React (a tela não pisca)
 src/
   main.jsx                 entrada: fontes, estilos, App
   App.jsx                  provedores e rotas (o mapa fica sempre montado por baixo)
-  config.js                o que muda por ambiente (API, tiles, intervalo)
+  config.js                o que muda por ambiente (API, tiles, intervalo, serviços de rota)
   dados/
     niveis.js              escala de risco: Baixo, Médio, Alto, Crítico
     modelo.js              formato do "ponto", conversão do backend e textos da tela
@@ -183,6 +215,13 @@ src/
     PontosContexto.jsx     guarda os pontos e atualiza sozinho (usePontos)
     modelo.test.js         testes das regras acima
     demo.test.js           testes da demonstração
+  rotas/
+    planejar.js            a regra: caminho mais rápido, bueiros no caminho, desvio e os textos
+    geometria.js           contas de distância, traçado compactado e área a evitar
+    servico.js             conversa com o serviço de rotas (Valhalla) e a busca de endereço (Photon)
+    lugares.js             lugares conhecidos oferecidos como atalho
+    RotaContexto.jsx       partida, chegada e resultado; refaz a rota quando o risco muda (useRotas)
+    planejar.test.js       testes da regra, sem internet
   preferencias/
     PreferenciasContexto.jsx   tema, animações e modo de abertura do mapa (usePreferencias)
   mapa/
@@ -196,7 +235,8 @@ src/
     arrastar.js            folhas que acompanham o dedo (cartão do bueiro, barra de busca)
     ganchos.js             useVoltar, useTelaLarga, de onde a pessoa veio
   telas/
-    Mapa.jsx               mapa, avisos, clima da demonstração, barra de busca e cartão do bueiro
+    Mapa.jsx               mapa, avisos, clima da demonstração, barra de busca, cartão do bueiro e modo rota
+    Rotas.jsx              escolha da partida e do destino
     Bueiro.jsx             detalhe: medido × previsto
     Bairros.jsx            situação por bairro
     Busca.jsx              busca de bueiros e bairros
@@ -207,8 +247,8 @@ src/
     telas.css              estilos de cada tela
 ```
 
-Endereços (rotas): `/` mapa · `/?ponto=ID` mapa com o cartão aberto · `/bueiro/ID` · `/bairros?b=Nome`
-· `/busca` · `/menu` · `/sobre`. O endereço usa `#` (HashRouter) para o app funcionar em qualquer
+Endereços: `/` mapa · `/?ponto=ID` mapa com o cartão aberto · `/bueiro/ID` · `/bairros?b=Nome`
+· `/busca` · `/rotas` escolher partida e destino · `/rota` mapa com a rota desenhada · `/menu` · `/sobre`. O endereço usa `#` (HashRouter) para o app funcionar em qualquer
 hospedagem estática sem configurar o servidor.
 
 ## Decisões que valem lembrar
@@ -242,7 +282,8 @@ hospedagem estática sem configurar o servidor.
 
 | Tela | Depende de |
 |---|---|
-| Rotas seguras e navegação | Serviço de rotas com áreas a evitar; busca por endereço |
+| Navegação passo a passo (voz, "vire à direita") | Decisão do grupo; o serviço de rotas já devolve as instruções em português |
+| Rotas a pé ou de transporte | Fora do escopo: o grupo decidiu por rotas só de carro |
 | Reportar problema | Domínio de Ocorrência no backend |
 | Alertas | Alerta a partir de previsão no backend; notificações |
 | Perfil e conta | Login (JWT) no backend |

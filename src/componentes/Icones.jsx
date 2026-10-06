@@ -24,6 +24,9 @@ export const IconeBairros = (p) => <Icone {...p}><path d="M4 20V10.5l4-2.5 4 2.5
 export const IconeSino = (p) => <Icone {...p}><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2H4.4z" /><path d="M10 21h4" /></Icone>;
 export const IconeLua = (p) => <Icone {...p}><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8.2 8.2 0 1 0 9.7 9.7z" /></Icone>;
 export const IconeSol = (p) => <Icone {...p}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.8 5.8l1.7 1.7M16.5 16.5l1.7 1.7M18.2 5.8l-1.7 1.7M7.5 16.5l-1.7 1.7" /></Icone>;
+// Rotas.
+export const IconePino = (p) => <Icone {...p}><path d="M12 21s-6.5-5.7-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.3 12 21 12 21z" /><circle cx="12" cy="10.4" r="2.3" /></Icone>;
+export const IconeInverter = (p) => <Icone {...p}><path d="M8 5v14M8 19l-3.2-3.2M8 19l3.2-3.2M16 19V5M16 5l-3.2 3.2M16 5l3.2 3.2" /></Icone>;
 // Clima (usados no controle da demonstração).
 const NUVEM = "M7 14.5a3.6 3.6 0 0 1 .4-7.18 5 5 0 0 1 9.5 1.2A3 3 0 0 1 16.6 14.5z";
 export const IconeChuvisco = (p) => <Icone {...p}><path d={NUVEM} /><path d="M9.5 17.6v.9M14 17.6v.9" /></Icone>;

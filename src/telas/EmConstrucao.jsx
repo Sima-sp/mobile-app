@@ -5,11 +5,6 @@ import { Link } from "react-router";
 import { CabecalhoTela, Tela } from "../componentes/Tela";
 
 const TELAS = {
-  rotas: {
-    titulo: "Rotas seguras",
-    texto: "Aqui o SIMA vai traçar o caminho até o seu destino desviando dos bueiros em nível alto ou crítico.",
-    depende: ["Um serviço de rotas que aceite áreas a evitar", "A busca por endereço"],
-  },
   reportar: {
     titulo: "Reportar problema",
     texto: "Aqui você vai poder avisar sobre bueiro entupido, tampa quebrada ou rua alagando, com foto e localização.",
@@ -67,12 +62,16 @@ export function Sobre() {
             <li><b>Previsto</b> é a estimativa da inteligência artificial a partir da chuva e dessas leituras. É uma chance, não uma certeza.</li>
             <li>A tampa enche conforme o risco: baixo, médio, alto e crítico.</li>
             <li>“Sem previsão” não quer dizer “sem risco”: só que não há estimativa para aquele ponto.</li>
+            <li>As <b>rotas</b> são de carro e desviam dos bueiros em nível alto ou crítico. Quando não há desvio, o app avisa por onde o caminho passa.</li>
           </ul>
         </div>
         <p className="small" style={{ marginTop: 16 }}>
           Em emergência, ligue <a href="tel:199">199</a> (Defesa Civil) ou <a href="tel:193">193</a> (Bombeiros).
         </p>
-        <p className="micro" style={{ marginTop: 16 }}>Projeto de conclusão de curso. Mapa: © OpenStreetMap, OpenMapTiles e OpenFreeMap.</p>
+        <p className="micro" style={{ marginTop: 16 }}>
+          Projeto de conclusão de curso. Mapa: © OpenStreetMap, OpenMapTiles e OpenFreeMap. Rotas: Valhalla, no servidor da FOSSGIS.
+          Busca de endereço: Photon, da komoot.
+        </p>
       </div>
     </Tela>
   );

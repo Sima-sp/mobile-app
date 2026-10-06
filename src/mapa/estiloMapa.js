@@ -33,6 +33,9 @@ const TOKENS = {
   rotulo: "--map-label",
   rotuloForte: "--map-label-2",
   trilho: "--map-dash",
+  rota: "--map-route",
+  rotaContorno: "--map-route-casing",
+  rotaOutra: "--map-route-alt",
 };
 
 // Cores das manchas do modo calor. São as mesmas nos dois temas, como no desenho: as cores de
@@ -61,6 +64,22 @@ export function pontosParaGeoJson(pontos) {
   };
 }
 
+/**
+ * Transforma a rota em GeoJSON para o mapa: o caminho em destaque, a outra opção (quando existe),
+ * a partida e a chegada. Sem rota, devolve uma coleção vazia.
+ * @param {{ ativa: Array, outra?: Array, origem: [number, number], destino: [number, number] }|null} rota
+ */
+export function rotaParaGeoJson(rota) {
+  const features = [];
+  if (rota?.ativa?.length) {
+    const linha = (papel, coordinates) => ({ type: "Feature", geometry: { type: "LineString", coordinates }, properties: { papel } });
+    const ponto = (papel, coordinates) => ({ type: "Feature", geometry: { type: "Point", coordinates }, properties: { papel } });
+    if (rota.outra?.length) features.push(linha("outra", rota.outra));
+    features.push(linha("ativa", rota.ativa), ponto("origem", rota.origem), ponto("destino", rota.destino));
+  }
+  return { type: "FeatureCollection", features };
+}
+
 const LINHA = ["match", ["geometry-type"], ["LineString", "MultiLineString"], true, false];
 const AREA = ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false];
 const classe = (...nomes) => ["match", ["get", "class"], nomes, true, false];
@@ -72,8 +91,11 @@ const NOME = ["coalesce", ["get", "name:pt"], ["get", "name:latin"], ["get", "na
  * @param {object} opcoes
  * @param {object} opcoes.geojson  pontos do SIMA (pontosParaGeoJson)
  * @param {boolean} opcoes.calor   true mostra as manchas de calor
+ * @param {object} opcoes.rota     rota a desenhar (rotaParaGeoJson)
  */
-export function montarEstilo(cores, { geojson, calor = false } = {}) {
+export function montarEstilo(cores, { geojson, calor = false, rota } = {}) {
+  const papel = (nome) => ["==", ["get", "papel"], nome];
+  const larguraDaRota = largura(1.3, 9, 3.5, 14, 6, 18, 12);
   // Cada tipo de via: quais classes, a cor, em que zoom entra, a largura por zoom e, nas maiores,
   // a partir de que zoom ganha contorno (antes disso a via é fina demais e o contorno a apagaria).
   // A ordem é da menor para a maior, para as avenidas ficarem por cima das ruas.
@@ -114,6 +136,7 @@ export function montarEstilo(cores, { geojson, calor = false } = {}) {
     sources: {
       base: { type: "vector", url: CONFIG.mapa.urlTiles },
       pontos: { type: "geojson", data: geojson ?? { type: "FeatureCollection", features: [] } },
+      rota: { type: "geojson", data: rota ?? { type: "FeatureCollection", features: [] } },
     },
     layers: [
       { id: "fundo", type: "background", paint: { "background-color": cores.fundo } },
@@ -154,6 +177,19 @@ export function montarEstilo(cores, { geojson, calor = false } = {}) {
       { id: "calor-nucleo", type: "circle", source: "pontos", layout: { visibility: visivel },
         paint: { "circle-color": corPorNivel, "circle-blur": 0.6, "circle-opacity": 0.75,
           "circle-radius": largura(1.6, 10, 6, 13, 18, 16, 46) } },
+
+      // Rota: a outra opção em cinza por baixo; a escolhida em azul, com contorno para destacar
+      // das ruas; a partida é um anel e a chegada um ponto cheio.
+      { id: "rota-outra", type: "line", source: "rota", filter: papel("outra"), layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": cores.rotaOutra, "line-width": largura(1.3, 9, 2.5, 14, 4.5, 18, 9), "line-opacity": 0.85 } },
+      { id: "rota-contorno", type: "line", source: "rota", filter: papel("ativa"), layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": cores.rotaContorno, "line-width": larguraDaRota, "line-opacity": 0.9 } },
+      { id: "rota", type: "line", source: "rota", filter: papel("ativa"), layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": cores.rota, "line-width": largura(1.3, 9, 2.2, 14, 4.2, 18, 9) } },
+      { id: "rota-origem", type: "circle", source: "rota", filter: papel("origem"),
+        paint: { "circle-radius": 6, "circle-color": cores.rotaContorno, "circle-stroke-width": 3, "circle-stroke-color": cores.rota } },
+      { id: "rota-destino", type: "circle", source: "rota", filter: papel("destino"),
+        paint: { "circle-radius": 7, "circle-color": cores.rota, "circle-stroke-width": 3, "circle-stroke-color": cores.rotaContorno } },
 
       // Nomes. Água em itálico azul; ruas e bairros em cinza; cidades um tom mais forte.
       { id: "nomes-corregos", type: "symbol", source: "base", "source-layer": "waterway", minzoom: 13, filter: LINHA,

@@ -31,6 +31,8 @@
   --map-block: #1a1c1f; --map-block-2: #222427; --map-park: #1c2c22; --map-dash: #494d53;
   --map-street: #303236; --map-avenue: #46494e; --map-motorway: #5b5f65; --map-casing: #0f1113;
   --map-water: #183755; --map-water-2: #3f78ad; --map-water-label: #6fa6da; --map-label: #9b9fa3; --map-label-2: #c1c4c8;
+  /* Rota no mapa: a escolhida em azul; a outra opção em cinza. */
+  --map-route: #3f8df5; --map-route-casing: #0b0c0e; --map-route-alt: #7b8087;
   --card: #1f2225; --fill-2: rgba(255,255,255,0.08); --fill-3: rgba(255,255,255,0.16); --sep: rgba(255,255,255,0.08);
   --grab: rgba(255,255,255,0.34); --seg-on: #393c41;
   --lg-tint: rgba(46,48,53,0.30); --lg-tint-strong: rgba(24,26,29,0.60); --lg-field: rgba(255,255,255,0.10);
@@ -55,6 +57,7 @@
   --map-block: #eeede9; --map-block-2: #e4e3de; --map-park: #cee8d2; --map-dash: #b8b7b3;
   --map-street: #ffffff; --map-avenue: #ffffff; --map-motorway: #ffffff; --map-casing: #d0cfcb;
   --map-water: #a8d1ee; --map-water-2: #6aa8dc; --map-water-label: #2b6aa6; --map-label: #6a6965; --map-label-2: #43423f;
+  --map-route: #1a6fd1; --map-route-casing: #ffffff; --map-route-alt: #8f9195;
   --card: #ffffff; --fill-2: rgba(16,18,20,0.055); --fill-3: rgba(16,18,20,0.12); --sep: rgba(16,18,20,0.09);
   --grab: rgba(16,18,20,0.22); --seg-on: #ffffff;
   --lg-tint: rgba(255,255,255,0.30); --lg-tint-strong: rgba(252,252,251,0.56); --lg-field: rgba(255,255,255,0.62);

@@ -32,4 +32,15 @@ export const CONFIG = {
     /** Limites de navegação: Grande São Paulo. [[oeste, sul], [leste, norte]] */
     limites: [[-47.2, -24.1], [-46.0, -23.1]],
   },
+
+  rotas: {
+    /** Serviço de rotas (Valhalla). Padrão: servidor público da FOSSGIS, sem chave, uso justo. */
+    urlValhalla: (env.VITE_ROTAS_URL || "https://valhalla1.openstreetmap.de").replace(/\/$/, ""),
+    /** Busca de endereço (Photon). Padrão: servidor público da komoot, sem chave. */
+    urlPhoton: (env.VITE_ENDERECOS_URL || "https://photon.komoot.io").replace(/\/$/, ""),
+    /** Espaço mínimo entre dois pedidos de rota: o servidor público pede no máximo um por segundo. */
+    intervaloMs: 1100,
+    /** Quanto esperar pela resposta antes de desistir. */
+    tempoLimiteMs: 12000,
+  },
 };

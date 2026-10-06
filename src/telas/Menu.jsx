@@ -6,7 +6,7 @@ import { usePreferencias } from "../preferencias/PreferenciasContexto";
 import { usePontos } from "../dados/PontosContexto";
 import { horaCurta } from "../dados/modelo";
 import { BotaoVoltar, Tela } from "../componentes/Tela";
-import { IconeBairros, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeSeta, IconeSino, IconeSol } from "../componentes/Icones";
+import { IconeBairros, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRota, IconeSeta, IconeSino, IconeSol } from "../componentes/Icones";
 
 const VERSAO = "0.1";
 
@@ -45,6 +45,7 @@ export default function Menu() {
       <div className="grp">
         {atalho("Mapa", "/", <IconeMapa pequeno />)}
         {atalho("Bairros", "/bairros", <IconeBairros pequeno />)}
+        {atalho("Rotas", "/rotas", <IconeRota pequeno />)}
         {atalho("Reportar problema", "/reportar", <IconeMais pequeno />, true)}
         {atalho("Alertas", "/alertas", <IconeSino pequeno />, true)}
       </div>

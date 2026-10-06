@@ -36,7 +36,8 @@ export function Tela({ titulo, classe = "", children }) {
   const raiz = useRef(null);
   const voltar = useVoltar();
   const anterior = useRotaAnterior();
-  const [veioDoMapa] = useState(() => anterior === null || anterior === "/");
+  // "/" é o mapa e "/rota" é o mapa com uma rota desenhada: nos dois casos a tela sobe de baixo.
+  const [veioDoMapa] = useState(() => anterior === null || anterior === "/" || anterior === "/rota");
   const [saindo, setSaindo] = useState(false);
 
   /** Fecha a tela com a animação de saída e só então volta no histórico. */

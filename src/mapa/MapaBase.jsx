@@ -8,6 +8,9 @@
 // Comandos disponíveis pela ref:
 //   voarPara(lon, lat, zoom?)   centraliza num lugar
 //   mostrarPosicao(lon, lat)    desenha o ponto azul do usuário e centraliza nele
+//
+// Com a propriedade `rota` ({ ativa, outra, origem, destino }), desenha o caminho e enquadra o
+// mapa nele, respeitando a área coberta pelos controles e pelo cartão.
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -21,7 +24,7 @@ import { CONFIG } from "../config";
 import { Tampa } from "../componentes/Tampa";
 import { corNivel, rotuloNivel } from "../dados/niveis";
 import { nivelVisivel, statusAgora } from "../dados/modelo";
-import { lerCoresDoTema, montarEstilo, pontosParaGeoJson } from "./estiloMapa";
+import { lerCoresDoTema, montarEstilo, pontosParaGeoJson, rotaParaGeoJson } from "./estiloMapa";
 import { agruparPontos } from "./agrupar.js";
 
 setWorkerUrl(urlDoWorker);
@@ -32,7 +35,7 @@ const TEXTOS = {
 };
 
 export const MapaBase = forwardRef(function MapaBase(
-  { pontos, agora, tema, calor, selecionadoId, aoTocarPonto, aoTocarFundo, medirAreaLivre },
+  { pontos, agora, tema, calor, selecionadoId, rota = null, aoTocarPonto, aoTocarFundo, medirAreaLivre },
   ref,
 ) {
   const caixa = useRef(null);
@@ -53,8 +56,9 @@ export const MapaBase = forwardRef(function MapaBase(
     () => pontosParaGeoJson(pontos.filter((p) => statusAgora(p, agora) !== "SEM_PREVISAO")),
     [pontos, agora],
   );
-  const ultimoEstilo = useRef({ geojson, calor });
-  ultimoEstilo.current = { geojson, calor };
+  const rotaGeo = useMemo(() => rotaParaGeoJson(rota), [rota]);
+  const ultimoEstilo = useRef({ geojson, calor, rota: rotaGeo });
+  ultimoEstilo.current = { geojson, calor, rota: rotaGeo };
 
   // Cria o mapa uma vez.
   useEffect(() => {
@@ -84,7 +88,8 @@ export const MapaBase = forwardRef(function MapaBase(
     instancia.touchZoomRotate.disableRotation();
     instancia.keyboard.disableRotation();
     // Os créditos dos dados do mapa (OpenStreetMap, OpenMapTiles) são obrigatórios.
-    instancia.addControl(new AttributionControl({ compact: true }), "bottom-right");
+    // Ficam no canto de baixo à esquerda; o da direita é do botão de rotas.
+    instancia.addControl(new AttributionControl({ compact: true }), "bottom-left");
     instancia.on("load", () => setPronto(true));
     const anotarZoom = () => setZoom(Math.round(instancia.getZoom() * 4) / 4);
     instancia.on("zoom", anotarZoom);
@@ -102,11 +107,25 @@ export const MapaBase = forwardRef(function MapaBase(
     };
   }, []);
 
-  // Tema, pontos ou modo mudaram: remonta o estilo e o MapLibre aplica só a diferença.
+  // Tema, pontos, modo ou rota mudaram: remonta o estilo e o MapLibre aplica só a diferença.
   useEffect(() => {
     if (!mapa || !pronto) return;
-    mapa.setStyle(montarEstilo(lerCoresDoTema(), { geojson, calor }), { diff: true });
-  }, [mapa, pronto, tema, geojson, calor]);
+    mapa.setStyle(montarEstilo(lerCoresDoTema(), { geojson, calor, rota: rotaGeo }), { diff: true });
+  }, [mapa, pronto, tema, geojson, calor, rotaGeo]);
+
+  // Rota nova: enquadra o caminho inteiro (as duas opções) na área livre do mapa.
+  useEffect(() => {
+    if (!mapa || !rota?.ativa?.length) return;
+    const limites = new LngLatBounds();
+    for (const ponto of rota.ativa) limites.extend(ponto);
+    for (const ponto of rota.outra ?? []) limites.extend(ponto);
+    const telaLarga = window.matchMedia("(min-width: 900px)").matches;
+    const area = toques.current.medirAreaLivre?.() ?? { topo: 110, cartao: 0, coluna: 420 };
+    const margem = telaLarga
+      ? { top: area.topo + 30, bottom: 60, left: area.coluna + 50, right: 70 }
+      : { top: area.topo + 30, bottom: area.cartao + 30, left: 44, right: 44 };
+    mapa.fitBounds(limites, { padding: margem, maxZoom: 16, duration: 700 });
+  }, [mapa, rota]);
 
   // Na primeira vez que há pontos, enquadra todos.
   useEffect(() => {
