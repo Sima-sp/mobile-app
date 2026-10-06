@@ -93,6 +93,13 @@ Antes de uma apresentação: abra o app com internet, passeie pelo mapa nas áre
 então uma versão nova publicada chega na abertura seguinte. Em `npm run dev` o service worker não
 é ligado.
 
+**Se o app não abrir.** Na primeira visita ainda não há nada guardado: se a internet falhar no
+meio do carregamento, a pessoa vê o aviso "O SIMA não abriu", com o botão "Tentar de novo", em
+vez de uma tela vazia. O aviso está no próprio `index.html` (não depende do código do app):
+aparece na hora se o arquivo do app falhar e depois de 15 segundos se ele só estiver demorando;
+quando o app chega, toma o lugar do aviso. Evite publicar uma versão nova durante uma
+apresentação: por cerca de um minuto, quem abrir o app pode pegar a página nova sem o arquivo novo.
+
 ## Gestos e animações
 
 - O **cartão do bueiro** acompanha o dedo: puxar para baixo fecha, puxar para cima abre a tela
