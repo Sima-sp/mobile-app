@@ -1,7 +1,9 @@
 // Tela principal: o mapa de risco. Fica sempre montada; as outras telas abrem por cima dela.
 //
-// O que tem aqui: botão de menu, o botão "onde estou", avisos sobre a origem dos dados, a barra
-// de busca em vidro (bueiros e lugares para ir) e o cartão que sobe quando um bueiro é tocado.
+// O que tem aqui: botão de menu, o botão "onde estou", avisos sobre a origem dos dados, o aviso
+// por região (quando alguma está em atenção ou risco alto), a barra de busca em vidro (bueiros e
+// lugares para ir) e o cartão que sobe quando um bueiro é tocado. As ruas em volta dos bueiros em
+// nível alto ou crítico são pintadas pelo próprio mapa (src/mapa/ruasAfetadas.js).
 // No endereço /rota o mapa entra no "modo rota": desenha o caminho e troca a barra de busca pelo
 // cartão da rota. O destino vem da busca (src/telas/Busca.jsx); a partida e as trocas, de
 // src/telas/Rotas.jsx.
@@ -17,12 +19,14 @@ import { useRotas } from "../rotas/RotaContexto";
 import { REGRAS, resumoDaRota, textoDistancia, textoDuracao, viasPrincipais } from "../rotas/planejar";
 import { corNivel } from "../dados/niveis";
 import { fatosDoCartao, horaCurta, linhaSituacao, nivelVisivel } from "../dados/modelo";
+import { avisosPorRegiao, resumoDosAvisos } from "../dados/regioes";
+import { useApresentacao } from "../componentes/PrimeiroUso";
 import { useTelaLarga } from "../componentes/ganchos";
 import { useArrastarVertical } from "../componentes/arrastar";
 import { useEsc } from "../componentes/Tela";
 import {
   IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
-  IconeSol, IconeTempestade,
+  IconeSeta, IconeSol, IconeTempestade,
 } from "../componentes/Icones";
 
 const ICONE_DO_CLIMA = { sol: IconeSol, chuvisco: IconeChuvisco, "chuva-forte": IconeChuva, "chuva-extrema": IconeTempestade };
@@ -41,8 +45,11 @@ export default function Mapa() {
   const barraRef = useRef(null);
   const painelRef = useRef(null);
   const rotas = useRotas();
+  const apresentacao = useApresentacao();
 
   const [recado, setRecado] = useState(null);
+  // Aviso por região: o que os bueiros de cada subprefeitura dizem em conjunto (src/dados/regioes.js).
+  const avisoRegional = useMemo(() => resumoDosAvisos(avisosPorRegiao(pontos, agora)), [pontos, agora]);
 
   const naRaiz = local.pathname === "/";
   const emRota = local.pathname === "/rota";
@@ -139,8 +146,16 @@ export default function Mapa() {
     );
   }
 
+  // "Usar minha localização", no último passo da apresentação de primeiro uso.
+  const pedido = apresentacao.pedidoDeLocalizacao;
+  useEffect(() => {
+    if (pedido > 0) localizar();
+    // Só quando o pedido muda; `localizar` é recriada a cada desenho.
+  }, [pedido]);
+
   // No celular, com outra tela por cima, o mapa sai do alcance do teclado e do leitor de tela.
-  const coberto = !naRaiz && !emRota && !telaLarga;
+  // O mesmo vale enquanto a apresentação de primeiro uso está aberta.
+  const coberto = (!naRaiz && !emRota && !telaLarga) || apresentacao.aberta;
 
   return (
     <section className="mp" aria-label="Mapa de risco" inert={coberto}>
@@ -170,6 +185,13 @@ export default function Mapa() {
           </div>
           <Avisos fonte={fonte} erro={erro} carregando={carregando} simulacao={simulacao} atualizadoEm={atualizadoEm}
             temPontos={pontos.length > 0} aoTentarDeNovo={atualizar} demo={demo} />
+          {avisoRegional ? (
+            <button type="button" className={`lg mp-aviso mp-regiao mp-regiao-${avisoRegional.nivel}`} onClick={() => navegar("/alertas")} aria-label={avisoRegional.descricao}>
+              <span className="mp-aviso-dot" aria-hidden="true" />
+              <span className="mp-regiao-texto">{avisoRegional.texto}</span>
+              <IconeSeta pequeno />
+            </button>
+          ) : null}
           {recado ? <p className="lg mp-aviso" role="status">{recado}</p> : null}
         </div>
 

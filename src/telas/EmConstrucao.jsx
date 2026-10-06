@@ -11,15 +11,10 @@ const TELAS = {
     depende: ["O registro de relatos no servidor do SIMA"],
     urgente: true,
   },
-  alertas: {
-    titulo: "Alertas",
-    texto: "Aqui vão ficar os avisos dos bueiros e bairros que você acompanha.",
-    depende: ["Alertas gerados a partir das previsões no servidor", "Notificações no aparelho"],
-  },
   perfil: {
     titulo: "Perfil e conta",
-    texto: "Com uma conta você vai poder salvar seus bairros, seguir bueiros e acompanhar seus relatos. O mapa continua aberto sem conta.",
-    depende: ["O login no servidor do SIMA"],
+    texto: "Com uma conta você vai poder salvar seus bairros, seguir bueiros, receber os avisos no celular e acompanhar seus relatos. O mapa continua aberto sem conta.",
+    depende: ["O login no servidor do SIMA", "Notificações no aparelho"],
   },
 };
 
@@ -61,15 +56,21 @@ export function Sobre() {
             <li><b>Medido</b> é o que o sensor leu no bueiro: nível da água e lixo acumulado, com a hora da leitura.</li>
             <li><b>Previsto</b> é a estimativa da inteligência artificial a partir da chuva e dessas leituras. É uma chance, não uma certeza.</li>
             <li>A tampa enche conforme o risco: baixo, médio, alto e crítico.</li>
+            <li>Quando um bueiro está em nível alto ou crítico, a <b>rua em volta dele</b> fica pintada da mesma cor, por cerca de 300 m para cada lado. É onde o risco está, não a mancha exata de um alagamento.</li>
+            <li>O <b>aviso por região</b> junta os bueiros de uma subprefeitura e acerta mais do que um bueiro sozinho.</li>
             <li>“Sem previsão” não quer dizer “sem risco”: só que não há estimativa para aquele ponto.</li>
             <li>As <b>rotas</b> são de carro e desviam dos bueiros em nível alto ou crítico. Quando não há desvio, o app avisa por onde o caminho passa.</li>
           </ul>
         </div>
+        <p style={{ marginTop: 16, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <Link className="btn btn-bone" to="/ia">Como a IA funciona</Link>
+          <Link className="btn btn-iron" to="/alertas">Avisos por região</Link>
+        </p>
         <p className="small" style={{ marginTop: 16 }}>
           Em emergência, ligue <a href="tel:199">199</a> (Defesa Civil) ou <a href="tel:193">193</a> (Bombeiros).
         </p>
         <p className="micro" style={{ marginTop: 16 }}>
-          Projeto de conclusão de curso. Mapa: © OpenStreetMap, OpenMapTiles e OpenFreeMap. Rotas: Valhalla, no servidor da FOSSGIS.
+          Projeto de conclusão de curso. Mapa e traçado das ruas: © OpenStreetMap, OpenMapTiles e OpenFreeMap. Rotas: Valhalla, no servidor da FOSSGIS.
           Busca de endereço: Photon, da komoot.
         </p>
       </div>

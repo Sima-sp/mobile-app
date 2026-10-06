@@ -1,12 +1,15 @@
 // Menu: atalhos para as telas e os ajustes do app (o app não tem barra de abas; tudo sai daqui).
-// Só aparecem ajustes que já funcionam. Avisos, conta e idioma entram com as próximas etapas.
+// Só aparecem ajustes que já funcionam. Notificações, conta e idioma entram com as próximas etapas.
 
 import { useNavigate } from "react-router";
 import { usePreferencias } from "../preferencias/PreferenciasContexto";
 import { usePontos } from "../dados/PontosContexto";
 import { horaCurta } from "../dados/modelo";
+import { useApresentacao } from "../componentes/PrimeiroUso";
 import { BotaoVoltar, Tela } from "../componentes/Tela";
-import { IconeBairros, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRota, IconeSeta, IconeSino, IconeSol } from "../componentes/Icones";
+import {
+  IconeBairros, IconeFaisca, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRepetir, IconeRota, IconeSeta, IconeSino, IconeSol,
+} from "../componentes/Icones";
 
 const VERSAO = "0.1";
 
@@ -14,6 +17,7 @@ export default function Menu() {
   const navegar = useNavigate();
   const { tema, animacoes, mudar } = usePreferencias();
   const { fonte, atualizadoEm, erro } = usePontos();
+  const apresentacao = useApresentacao();
 
   // Ícones do menu sem cor: no app, cor é reservada ao risco (as quatro do nível) e à ação (azul).
   const atalho = (rotulo, caminho, icone, emBreve = false) => (
@@ -46,8 +50,19 @@ export default function Menu() {
         {atalho("Mapa", "/", <IconeMapa pequeno />)}
         {atalho("Bairros", "/bairros", <IconeBairros pequeno />)}
         {atalho("Rotas", "/rotas", <IconeRota pequeno />)}
+        {atalho("Avisos por região", "/alertas", <IconeSino pequeno />)}
         {atalho("Reportar problema", "/reportar", <IconeMais pequeno />, true)}
-        {atalho("Alertas", "/alertas", <IconeSino pequeno />, true)}
+      </div>
+
+      <h2 className="grp-t">Entender</h2>
+      <div className="grp">
+        {atalho("Como a IA funciona", "/ia", <IconeFaisca pequeno />)}
+        <button type="button" className="row" onClick={() => { apresentacao.abrir(); navegar("/"); }}>
+          <span className="row-ic" aria-hidden="true"><IconeRepetir pequeno /></span>
+          <span className="row-k">Rever a apresentação</span>
+          <span className="row-chev"><IconeSeta pequeno /></span>
+        </button>
+        {atalho("Sobre o SIMA", "/sobre", <IconeInfo pequeno />)}
       </div>
 
       <h2 className="grp-t">Aparência</h2>
@@ -74,11 +89,6 @@ export default function Menu() {
       <p className="micro" style={{ padding: "8px 36px 0" }}>
         “Do aparelho” segue a configuração de acessibilidade do celular ou computador.
       </p>
-
-      <h2 className="grp-t">Sobre</h2>
-      <div className="grp">
-        {atalho("Sobre o SIMA", "/sobre", <IconeInfo pequeno />)}
-      </div>
 
       <p className="micro mu-foot">SIMA · versão {VERSAO}<br />{origem}</p>
     </Tela>

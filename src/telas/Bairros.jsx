@@ -1,10 +1,13 @@
 // Tela Bairros: a situação de cada bairro num relance e os pontos que merecem atenção.
 // O bairro escolhido fica no endereço (/bairros?b=Santana) para a busca poder abrir direto nele.
+// O cartão do bairro também traz o aviso da região (src/dados/regioes.js): o que os bueiros dela
+// dizem em conjunto. A lista de todas as regiões em aviso fica na tela Avisos.
 
 import { useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { usePontos } from "../dados/PontosContexto";
 import { resumirBairros } from "../dados/bairros";
+import { ROTULO_AVISO, avisosPorRegiao, fraseDaRegiao } from "../dados/regioes";
 import { ROTULO_NIVEL } from "../dados/niveis";
 import { milimetros, nivelVisivel, porcento, resumoPrevisao } from "../dados/modelo";
 import { SeloNivel, Tampa } from "../componentes/Tampa";
@@ -18,6 +21,8 @@ export default function Bairros() {
 
   const bairros = useMemo(() => resumirBairros(pontos, agora), [pontos, agora]);
   const escolhido = bairros.find((b) => b.nome === parametros.get("b")) ?? bairros[0] ?? null;
+  const regioes = useMemo(() => avisosPorRegiao(pontos, agora), [pontos, agora]);
+  const regiao = escolhido ? regioes.find((r) => r.nome === escolhido.nome) ?? null : null;
 
   if (!escolhido) {
     return (
@@ -67,6 +72,16 @@ export default function Bairros() {
           ))}
           {escolhido.semPrevisao ? <span><Tampa nivel={null} tamanho={14} /><b className="mono">{escolhido.semPrevisao}</b> sem previsão</span> : null}
         </div>
+        {regiao ? (
+          <button type="button" className="br-regiao" onClick={() => navegar("/alertas")}>
+            <span className={`av-marca av-marca-${regiao.nivel}`} aria-hidden="true" />
+            <span className="br-regiao-texto">
+              <b>{regiao.nivel ? `Aviso da região: ${ROTULO_AVISO[regiao.nivel].toLowerCase()}` : regiao.cobertura ? "Sem aviso para a região" : "Poucos bueiros para um aviso da região"}</b>
+              <span>{fraseDaRegiao(regiao)}</span>
+            </span>
+            <IconeSeta pequeno />
+          </button>
+        ) : null}
       </section>
 
       <h2 className="grp-t">Bueiros do bairro, do mais grave ao mais tranquilo</h2>

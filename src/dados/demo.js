@@ -12,7 +12,7 @@
 //   1. Cada ponto tem uma SENSIBILIDADE fixa: quem alagou mais vezes e está mais perto de um
 //      córrego reage mais à chuva.
 //   2. O clima define uma INTENSIDADE de 0 a 1. A chuva em milímetros, o nível da água e a chance
-//      de alagar saem dela e da sensibilidade do ponto.
+//      de alagar saem dela e da sensibilidade do ponto. O lixo pesa só no nível da água.
 //   3. A chance vira nível pelos limiares reais do modelo v1 (médio a partir de 0,41 %, alto a
 //      partir de 1,19 %, crítico a partir de 25 %).
 //   4. A leitura do sensor ajusta o nível, como no serviço de IA: água em 100 % é "transbordando
@@ -53,6 +53,17 @@ function fixo(id, semente) {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967295;
 }
 
+/**
+ * Quanto um lugar reage à chuva, de 0 a 1: pesa o histórico de alagamentos (por ano, perto do
+ * ponto) e a distância ao córrego mais próximo. `acaso` (0 a 1) é a parte que os dois não
+ * explicam; cada ponto da demonstração tem a sua, fixa.
+ */
+export function sensibilidadeDoLugar(freqHistorica, distCorrego, acaso = 0.5) {
+  const historico = Math.min(1, Math.log1p(freqHistorica) / Math.log1p(12));
+  const pertoDoCorrego = Math.exp(-distCorrego / 150);
+  return limitar(0.62 * historico + 0.26 * pertoDoCorrego + 0.12 * acaso, 0, 1);
+}
+
 // Posição de cada ponto na travessia da chuva (0 = primeiro a ser atingido, 1 = último).
 const LONS = PONTOS_CAPITAL.map((p) => p.lon);
 const LATS = PONTOS_CAPITAL.map((p) => p.lat);
@@ -61,11 +72,9 @@ const [LAT_MIN, LAT_MAX] = [Math.min(...LATS), Math.max(...LATS)];
 
 /** Características fixas de cada ponto, calculadas uma vez. */
 const BASE = PONTOS_CAPITAL.map((p) => {
-  const historico = Math.min(1, Math.log1p(p.freqHistorica) / Math.log1p(12));
-  const pertoDoCorrego = Math.exp(-p.distCorrego / 150);
   return {
     ...p,
-    sensibilidade: limitar(0.62 * historico + 0.26 * pertoDoCorrego + 0.12 * fixo(p.id, 1), 0, 1),
+    sensibilidade: sensibilidadeDoLugar(p.freqHistorica, p.distCorrego, fixo(p.id, 1)),
     lixo: Math.round(8 + 72 * fixo(p.id, 2) ** 1.25),
     aguaSeca: 4 + 13 * fixo(p.id, 3),
     leituraHa: 1 + Math.floor(fixo(p.id, 4) * 8),
@@ -148,25 +157,65 @@ function nivelPelaChance(probabilidade) {
   return 1;
 }
 
+/** Milímetros de chuva nas últimas 3 horas para uma força de chuva de 0 a 1 (ou pouco mais). */
+export function chuvaEm3h(forca) {
+  return Math.round(66 * forca ** 2.2 * 10) / 10;
+}
+
+/**
+ * A parte do MODELO: chance de alagar pela chuva e pelo lugar, e o nível que sai dela.
+ * As leituras do sensor não entram aqui, como no sistema de verdade.
+ * @param {number} forca          chuva no lugar, de 0 (seco) a 1 (temporal)
+ * @param {number} sensibilidade  quanto o lugar reage à chuva (sensibilidadeDoLugar)
+ */
+export function previsaoPelaChuva(forca, sensibilidade) {
+  // "Pressão" sobre o bueiro: a chuva pesada pelo quanto o lugar é sensível a ela.
+  const pressao = limitar(forca * (0.15 + 0.85 * sensibilidade), 0, 1.2);
+  const probabilidade = chancePelaPressao(pressao);
+  return { pressao, probabilidade, nivelModelo: nivelPelaChance(probabilidade) };
+}
+
+/**
+ * A parte do SENSOR: a leitura ajusta o nível que o modelo deu, como no serviço de IA.
+ * Água em 100 % é "transbordando agora" (crítico, medido); água a partir de 80 % sobe um nível;
+ * lixo a partir de 60 % com chuva também. A probabilidade não muda: só o nível.
+ * @returns {{ nivel: number, medicaoTransbordando: boolean, motivos: Array<"agua-cheia"|"agua-alta"|"lixo"> }}
+ */
+export function ajustePeloSensor(nivelModelo, { agua, lixo, chuvaRecente3h }) {
+  const motivos = [];
+  let nivel = nivelModelo;
+  if (agua >= 100) return { nivel: 4, medicaoTransbordando: true, motivos: ["agua-cheia"] };
+  if (agua >= 80) { nivel += 1; motivos.push("agua-alta"); }
+  if (lixo >= 60 && chuvaRecente3h >= 0.5) { nivel += 1; motivos.push("lixo"); }
+  return { nivel: Math.min(4, nivel), medicaoTransbordando: false, motivos };
+}
+
 /** Leituras e previsão de um ponto para uma intensidade de chuva. Exportada para os testes. */
 export function situacaoDoPonto(p, intensidade) {
   const forca = intensidade * p.manchaDeChuva;
-  // "Pressão" sobre o bueiro: chuva pesada pelo quanto o lugar é sensível, mais o efeito do lixo.
-  const pressao = limitar(forca * (0.15 + 0.85 * p.sensibilidade) + 0.05 * forca * (p.lixo / 100), 0, 1.2);
+  const { pressao, probabilidade, nivelModelo } = previsaoPelaChuva(forca, p.sensibilidade);
 
-  const chuvaRecente3h = Math.round(66 * forca ** 2.2 * 10) / 10;
+  const chuvaRecente3h = chuvaEm3h(forca);
   const chuvaPrevista3h = Math.round(31 * forca ** 1.8 * 10) / 10;
-  const agua = Math.round(limitar(p.aguaSeca + 122 * pressao ** 1.36, 0, 100));
-  const probabilidade = chancePelaPressao(pressao);
-
-  const nivelModelo = nivelPelaChance(probabilidade);
-  const medicaoTransbordando = agua >= 100;
-  let nivel = nivelModelo;
-  if (agua >= 80) nivel += 1;
-  if (p.lixo >= 60 && chuvaRecente3h >= 0.5) nivel += 1;
-  nivel = medicaoTransbordando ? 4 : Math.min(4, nivel);
+  // A água no bueiro sobe com a mesma pressão e um pouco mais onde há muito lixo (escoa pior).
+  const agua = Math.round(limitar(p.aguaSeca + 122 * (pressao + 0.05 * forca * (p.lixo / 100)) ** 1.36, 0, 100));
+  const { nivel, medicaoTransbordando } = ajustePeloSensor(nivelModelo, { agua, lixo: p.lixo, chuvaRecente3h });
 
   return { chuvaRecente3h, chuvaPrevista3h, agua, probabilidade, nivelModelo, nivel, medicaoTransbordando };
+}
+
+/**
+ * Simulador da tela "Como a IA funciona": a pessoa escolhe a chuva, o lugar e as leituras do
+ * sensor, e recebe o que o sistema responderia, em dois passos (modelo e sensor).
+ * É a mesma conta da demonstração. O sensor muda o nível, nunca a probabilidade.
+ * @param {{ chuva: number, sensibilidade: number, agua: number, lixo: number }} entrada
+ *   chuva de 0 a 1; água e lixo em %
+ */
+export function simularPrevisao({ chuva, sensibilidade, agua, lixo }) {
+  const chuvaRecente3h = chuvaEm3h(chuva);
+  const { probabilidade, nivelModelo } = previsaoPelaChuva(chuva, sensibilidade);
+  const { nivel, medicaoTransbordando, motivos } = ajustePeloSensor(nivelModelo, { agua, lixo, chuvaRecente3h });
+  return { chuvaRecente3h, probabilidade, nivelModelo, nivel, medicaoTransbordando, motivos };
 }
 
 /** Curva das últimas 12 horas: nível de tempo seco e, nas 3 horas finais, a subida até agora. */

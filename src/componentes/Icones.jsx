@@ -32,3 +32,5 @@ export const IconeChuvisco = (p) => <Icone {...p}><path d={NUVEM} /><path d="M9.
 export const IconeChuva = (p) => <Icone {...p}><path d={NUVEM} /><path d="M8.6 17.2l-.9 2.6M12.2 17.2l-.9 2.6M15.8 17.2l-.9 2.6" /></Icone>;
 export const IconeTempestade = (p) => <Icone {...p}><path d={NUVEM} /><path d="M12.6 15.6 10.4 19h3l-1.6 3.2" /><path d="M7.6 17.4l-.8 2.2M17 17.4l-.8 2.2" /></Icone>;
 export const IconeInfo = (p) => <Icone {...p}><circle cx="12" cy="12" r="8.4" /><path d="M9.6 9.6a2.4 2.4 0 1 1 3.2 2.3c-.6.2-.8.7-.8 1.3v.5M12 16.6v.3" /></Icone>;
+export const IconeFaisca = (p) => <Icone {...p}><path d="M11 4.5l1.6 4.4 4.4 1.6-4.4 1.6L11 16.5l-1.6-4.4L5 10.5l4.4-1.6z" /><path d="M18 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></Icone>;
+export const IconeRepetir = (p) => <Icone {...p}><path d="M5 12a7 7 0 0 1 12-4.9L19 9M19 4.5V9h-4.5M19 12a7 7 0 0 1-12 4.9L5 15M5 19.5V15h4.5" /></Icone>;

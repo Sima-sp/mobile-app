@@ -1,5 +1,6 @@
 /* Estilos de cada tela do app. Prefixos: app- (casca), mp- (mapa), mk- (marcadores), ms- (cartão do bueiro),
-   rt- (rotas), bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção).
+   rt- (rotas), bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção),
+   av- (avisos por região), ia- (como a IA funciona), pu- (primeiro uso).
    Os componentes compartilhados (vidro, listas, botões) ficam em base.css. */
 
 /* ── Casca do app ──
@@ -54,6 +55,13 @@
 .mp-aviso-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--route); }
 .mp-aviso-erro .mp-aviso-dot { background: var(--r4); }
 .mp-aviso-simulacao .mp-aviso-dot { background: var(--r3); }
+/* Aviso por região: o mesmo formato, mas é um botão (leva à lista de avisos). O ponto tem a cor
+   do aviso (atenção ou risco alto); o texto diz qual é. */
+.mp-regiao { cursor: pointer; padding-right: 10px; }
+.mp-regiao-2 .mp-aviso-dot { background: var(--r2); }
+.mp-regiao-3 .mp-aviso-dot { background: var(--r3); }
+.mp-regiao-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-regiao .ico { color: var(--bone-300); }
 
 /* Barra de baixo, como a do Mapas do iPhone: pegador, campo de busca e botão do perfil. */
 .mbar { position: absolute; left: 10px; right: 10px; bottom: calc(var(--base-segura) + 10px); z-index: 30; height: 84px; border-radius: 38px;
@@ -188,6 +196,27 @@
 .br-keys span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--bone-300); }
 .br-keys b { color: var(--bone-50); font-weight: 700; }
 .br-code { font-weight: 700; }
+/* Aviso da região dentro do cartão do bairro: um botão discreto que leva à lista de avisos. */
+.br-regiao { display: flex; align-items: flex-start; gap: 10px; width: 100%; margin-top: 16px; padding: 14px 0 0; border: 0;
+  border-top: 1px solid var(--sep); background: transparent; text-align: left; color: var(--bone-500); }
+.br-regiao .av-marca { margin-top: 5px; }
+.br-regiao-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 14px; line-height: 1.35; color: var(--bone-300); }
+.br-regiao-texto b { font-size: 15px; font-weight: 700; color: var(--bone-50); }
+.br-regiao > .ico { margin-top: 3px; }
+
+/* ── Avisos por região ── */
+.av-intro { padding: 12px 20px 0; }
+.av-fonte { padding: 6px 20px 0; }
+.av-titulo { display: flex; align-items: center; gap: 8px; }
+/* Marca do aviso: um ponto na cor do nível. Sem aviso, um anel vazio (a forma também diz). */
+.av-marca { width: 12px; height: 12px; flex: none; border-radius: 50%; border: 2px solid var(--iron-400); }
+.av-marca-2 { border-color: var(--r2); background: var(--r2); }
+.av-marca-3 { border-color: var(--r3); background: var(--r3); }
+.row > .av-marca { margin: 0 10px; align-self: flex-start; margin-top: 6px; }
+.av-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; }
+.av-porque { margin: 0 16px; padding: 18px; }
+.av-porque b { color: var(--bone-50); }
+.av-rodape { padding: 14px 36px 0; }
 
 /* ── Bueiro ── */
 .bu-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
@@ -217,6 +246,9 @@
 .bu-fact:last-child { border-bottom: 0; }
 .bu-fact b { color: var(--bone-50); font-weight: 700; text-align: right; }
 .bu-actions { display: flex; flex-direction: column; gap: 10px; padding: 24px 16px 16px; }
+.bu-como { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 4px; padding: 0 8px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--route); font-size: 15px; font-weight: 700; }
+.bu-como:hover { background: var(--fill-2); }
 
 /* ── Rotas (escolha de partida e destino) ── */
 .rt-intro { padding: 12px 20px 0; }
@@ -248,3 +280,106 @@
 .ec { padding: 8px 20px 0; }
 .ec-card { margin-top: 20px; padding: 20px; }
 .ec-lista { margin: 12px 0 0; padding: 0 0 0 20px; color: var(--bone-300); font-size: 15.5px; line-height: 1.5; }
+
+/* ── Como a IA funciona ── */
+.ia-intro { padding: 12px 20px 0; }
+/* A resposta fica presa no alto da tela enquanto a pessoa mexe nos controles. */
+.ia-resposta { position: sticky; top: calc(var(--topo-seguro) + 8px); z-index: 15; margin: 16px 16px 0; padding: 16px 18px;
+  box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px var(--sep); }
+.ia-resposta-topo { display: flex; align-items: center; gap: 14px; }
+.ia-nivel { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.ia-chance { margin-top: 4px; font-size: 15px; color: var(--bone-300); }
+.ia-chance b { color: var(--bone-50); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ia-frase { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sep); min-height: 3.9em; }
+.ia-cenarios { display: flex; gap: 8px; padding: 14px 16px 0; overflow-x: auto; scrollbar-width: none; }
+.ia-cenarios::-webkit-scrollbar { display: none; }
+.ia-grupo { padding: 4px 0; }
+.ia-ctl { padding: 14px 16px 14px; }
+.ia-ctl + .ia-ctl { border-top: 1px solid var(--sep); }
+.ia-rotulo { display: block; font-size: 13.5px; font-weight: 700; color: var(--bone-500); }
+.ia-valor { margin-top: 2px; font-size: 16.5px; font-weight: 700; color: var(--bone-50); }
+.ia-valor-sobe { color: var(--r3); }
+.ia-valor-medido { color: var(--r4); }
+.ia-nota { margin-top: 3px; min-height: 2.7em; }
+.ia-lugares { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 12px; }
+.ia-rodape { padding: 12px 36px 0; }
+/* Controle deslizante. A área de toque tem 44 px de altura; o trilho desenhado é fino. A parte
+   preenchida usa --pct, que a tela atualiza junto com o valor. */
+.ia-faixa-caixa { position: relative; margin: 4px 0 2px; }
+.ia-faixa { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 44px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+.ia-faixa::-webkit-slider-runnable-track { height: 8px; border-radius: 4px;
+  background: linear-gradient(to right, var(--route-deep) var(--pct), var(--fill-3) var(--pct)); }
+.ia-faixa::-moz-range-track { height: 8px; border-radius: 4px; background: var(--fill-3); }
+.ia-faixa::-moz-range-progress { height: 8px; border-radius: 4px; background: var(--route-deep); }
+.ia-faixa::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%;
+  background: #ffffff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08); }
+.ia-faixa::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #ffffff; border: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08); }
+.ia-faixa:focus-visible { outline: none; }
+.ia-faixa:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
+.ia-faixa:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
+/* Risco no ponto em que a leitura passa a mudar o nível (80% de água, 60% de lixo). O polegar do
+   controle tem 28 px, então o centro dele anda de 14 px a (100% - 14 px). */
+.ia-marca { position: absolute; top: 9px; width: 2px; height: 26px; margin-left: -1px; border-radius: 1px; background: var(--bone-500);
+  pointer-events: none; }
+/* O caminho de uma previsão: passos numerados. */
+.ia-passos { list-style: none; padding: 0; }
+.ia-passo { display: flex; gap: 14px; padding: 16px; }
+.ia-passo + .ia-passo { border-top: 1px solid var(--sep); }
+.ia-num { width: 30px; height: 30px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--fill-3); color: var(--bone-50); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+.ia-passo-t { font-size: 16.5px; font-weight: 700; color: var(--bone-50); line-height: 1.25; margin: 4px 0 0; }
+.ia-niveis { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.ia-niveis span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
+.ia-fatos { display: grid; gap: 10px; padding: 0 16px; }
+.ia-fato { padding: 18px; }
+.ia-fato-n { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--bone-50); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.ia-fato-t { font-size: 16.5px; font-weight: 700; color: var(--bone-50); }
+
+/* ── Primeiro uso ── */
+.pu { position: absolute; inset: 0; z-index: 90; display: flex; align-items: flex-end; justify-content: center;
+  padding: calc(var(--topo-seguro) + 16px) 12px calc(var(--base-segura) + 12px); background: var(--scrim-1);
+  animation: pu-entra 260ms ease-out both; }
+.pu-cartao { width: 100%; max-width: 420px; max-height: 100%; overflow-y: auto; border-radius: 34px; padding: 18px 22px 20px; outline: none;
+  animation: pu-sobe 420ms cubic-bezier(.2,.85,.2,1) both; }
+@keyframes pu-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pu-sobe { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 900px) { .pu { align-items: center; } }
+.pu-topo { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.pu-conta { display: inline-flex; gap: 6px; }
+.pu-ponto { width: 8px; height: 8px; border-radius: 4px; background: var(--fill-3); transition: width 200ms ease-out, background-color 200ms; }
+.pu-ponto-on { width: 22px; background: var(--route-deep); }
+.pu-pular { min-height: 44px; padding: 0 10px; margin-right: -10px; border: 0; border-radius: 12px; background: transparent; color: var(--bone-300);
+  font-size: 15.5px; font-weight: 700; }
+.pu-pular:hover { background: var(--fill-2); }
+.pu-desenho { display: flex; align-items: center; justify-content: center; min-height: 104px; margin-top: 6px; }
+/* Título e texto reservam a altura do passo mais comprido: o cartão não muda de tamanho (nem os
+   botões de lugar) de um passo para o outro. */
+.pu-titulo { margin-top: 14px; min-height: 2.28em; font-size: 25px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.14; color: var(--bone-50); text-wrap: balance; }
+.pu-texto { margin-top: 10px; font-size: 16.5px; line-height: 1.45; color: var(--bone-300); text-wrap: pretty; min-height: 7.25em; }
+.pu-acoes { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.pu-acoes .btn { width: 100%; border-radius: 25px; }
+.pu-niveis { display: flex; gap: 14px; }
+.pu-niveis span { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.pu-fatos { display: grid; grid-template-columns: minmax(0, 0.88fr) minmax(0, 0.88fr) minmax(0, 1.24fr); width: 100%; border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); }
+.pu-fatos div { display: flex; flex-direction: column; gap: 4px; padding: 12px 4px 12px 10px; min-width: 0; }
+.pu-fatos div:first-child { padding-left: 2px; }
+.pu-fatos div + div { border-left: 1px solid var(--sep); }
+.pu-fatos b { font-size: 16px; font-weight: 700; color: var(--bone-50); white-space: nowrap; }
+.pu-fatos span { font-size: 13px; color: var(--bone-500); }
+.pu-fatos .pu-etiqueta { font-weight: 700; color: var(--bone-300); }
+.pu-fatos .pu-etiqueta-ia { color: var(--route); }
+.pu-clima { display: inline-flex; padding: 3px; border-radius: 28px; background: var(--fill-2); }
+.pu-clima span { width: 50px; height: 50px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--bone-300); }
+.pu-clima .pu-clima-on { background: var(--route-deep); color: #ffffff; }
+.pu-busca { display: flex; align-items: center; gap: 10px; width: 100%; height: 54px; padding: 0 8px 0 16px; border-radius: 27px;
+  background: var(--fill-2); color: var(--bone-500); font-size: 16.5px; }
+.pu-busca span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pu-busca i { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--route-deep); color: #ffffff; }
+/* Celular baixo: aperta o que dá para o cartão caber sem rolar. */
+@media (max-height: 700px) {
+  .pu-desenho { min-height: 84px; }
+  .pu-titulo { font-size: 22px; margin-top: 10px; }
+  .pu-texto { font-size: 15.5px; }
+}

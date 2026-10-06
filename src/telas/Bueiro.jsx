@@ -8,7 +8,7 @@ import { corNivel, rotuloNivel } from "../dados/niveis";
 import { haQuanto, horaCurta, leituraRecente, milimetros, nivelVisivel, porcento, statusAgora, textoProbabilidade } from "../dados/modelo";
 import { SeloNivel } from "../componentes/Tampa";
 import { BotaoVoltar, Tela } from "../componentes/Tela";
-import { IconeMais, IconeMapa, IconeRota } from "../componentes/Icones";
+import { IconeMais, IconeMapa, IconeRota, IconeSeta } from "../componentes/Icones";
 
 export default function Bueiro() {
   const { id } = useParams();
@@ -69,6 +69,9 @@ export default function Bueiro() {
 
       <section className="bu-sec" aria-label="Previsão">
         <PlacaPrevisao ponto={ponto} agora={agora} />
+        <button type="button" className="bu-como" onClick={() => navegar({ pathname: "/ia", search: `?ponto=${encodeURIComponent(ponto.id)}` })}>
+          Como a IA chega a esse nível<IconeSeta pequeno />
+        </button>
       </section>
 
       {ponto.historicoAgua ? (

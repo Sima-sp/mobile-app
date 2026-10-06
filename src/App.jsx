@@ -16,7 +16,10 @@ import Bairros from "./telas/Bairros";
 import Busca from "./telas/Busca";
 import Menu from "./telas/Menu";
 import Rotas from "./telas/Rotas";
+import Avisos from "./telas/Avisos";
+import ComoFunciona from "./telas/ComoFunciona";
 import { EmConstrucao, Sobre } from "./telas/EmConstrucao";
+import { PrimeiroUso, ProvedorApresentacao } from "./componentes/PrimeiroUso";
 
 export default function App() {
   return (
@@ -25,6 +28,7 @@ export default function App() {
       <ProvedorPreferencias>
         <ProvedorPontos>
         <ProvedorRotas>
+        <ProvedorApresentacao>
           <DefinicoesSvg />
           <div className="app">
             <Mapa />
@@ -39,11 +43,15 @@ export default function App() {
               <Route path="/sobre" element={<Sobre />} />
               <Route path="/rotas" element={<Rotas />} />
               <Route path="/reportar" element={<EmConstrucao tela="reportar" />} />
-              <Route path="/alertas" element={<EmConstrucao tela="alertas" />} />
+              <Route path="/alertas" element={<Avisos />} />
+              <Route path="/ia" element={<ComoFunciona />} />
               <Route path="/perfil" element={<EmConstrucao tela="perfil" />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            {/* Apresentação de primeiro uso: por cima de tudo, só na primeira abertura. */}
+            <PrimeiroUso />
           </div>
+        </ProvedorApresentacao>
         </ProvedorRotas>
         </ProvedorPontos>
       </ProvedorPreferencias>
