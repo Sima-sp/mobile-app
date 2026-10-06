@@ -1,0 +1,216 @@
+/* Estilos de cada tela do app. Prefixos: app- (casca), mp- (mapa), mk- (marcadores), ms- (cartão do bueiro),
+   bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção).
+   Os componentes compartilhados (vidro, listas, botões) ficam em base.css. */
+
+/* ── Casca do app ──
+   O mapa fica sempre montado por baixo. As outras telas abrem por cima:
+   no celular cobrem tudo; em tela larga viram uma coluna à esquerda e o mapa continua visível. */
+/* overflow: clip (e não só hidden) impede também a rolagem feita por código, como quando um campo
+   recebe foco fora da área visível. */
+.app { position: fixed; inset: 0; overflow: hidden; overflow: clip; background: var(--iron-800); }
+.tela { position: absolute; inset: 0; z-index: 60; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  background: var(--iron-800); color: var(--bone-100); padding-bottom: calc(var(--base-segura) + 24px);
+  box-shadow: 0 -14px 40px var(--shadow); }
+@media (min-width: 900px) {
+  .tela { right: auto; width: var(--coluna); box-shadow: 18px 0 44px var(--shadow); }
+}
+/* Movimento das telas (quem escolhe a classe é src/componentes/Tela.jsx).
+   Vindo do mapa a tela sobe de baixo, como uma folha, e desce ao fechar.
+   Entre uma tela e outra é só um esmaecer rápido. */
+.tela-sobe { animation: tela-sobe 480ms cubic-bezier(.2,.85,.2,1) both; }
+.tela-desce { animation: tela-desce 300ms cubic-bezier(.4,0,.9,.5) both; pointer-events: none; }
+.tela-troca { animation: tela-troca 220ms ease-out both; }
+.tela-some { animation: tela-some 170ms ease-in both; pointer-events: none; }
+@keyframes tela-sobe { from { transform: translateY(100%); border-radius: 34px 34px 0 0; } to { transform: none; border-radius: 0; } }
+@keyframes tela-desce { from { transform: none; border-radius: 0; } to { transform: translateY(100%); border-radius: 34px 34px 0 0; } }
+@keyframes tela-troca { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes tela-some { from { opacity: 1; } to { opacity: 0; } }
+
+/* Folhas que acompanham o dedo (ver src/componentes/arrastar.js). touch-action: none entrega o
+   gesto vertical para o app em vez do navegador. Enquanto arrasta, nada de transição. */
+.ms, .mbar { touch-action: none; }
+.arrastando { transition: none !important; }
+.ms .grabber, .mbar .grabber { cursor: grab; }
+
+/* ── Mapa ── */
+.mp { position: absolute; inset: 0; }
+.mp-tela { position: absolute; inset: 0; background: var(--map-block); }
+.mp-caixa { width: 100%; height: 100%; }
+.mp-top { position: absolute; left: 16px; right: 16px; top: calc(var(--topo-seguro) + 12px); z-index: 25; display: flex;
+  align-items: flex-start; justify-content: space-between; pointer-events: none; }
+.mp-top > * { pointer-events: auto; }
+.mp-esq { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.mp-linha { display: flex; align-items: center; gap: 10px; }
+/* Clima da demonstração: quatro botões numa cápsula de vidro, ao lado do menu. */
+.mp-clima { display: flex; align-items: center; gap: 0; height: 48px; padding: 2px; border-radius: 24px; }
+.mp-clima button { width: 44px; height: 44px; border: 0; border-radius: 50%; padding: 0; background: transparent; color: var(--bone-300);
+  display: inline-flex; align-items: center; justify-content: center; transition: background-color 180ms ease-out, color 180ms ease-out; }
+.mp-clima button:hover { color: var(--bone-50); }
+.mp-clima .mp-clima-on { background: var(--route-deep); color: #ffffff; }
+.mp-clima .mp-clima-on:hover { color: #ffffff; }
+.mp-legend { display: flex; gap: 12px; align-items: center; height: 38px; padding: 0 14px; border-radius: 19px;
+  font-size: 13.5px; font-weight: 700; color: var(--bone-50); }
+.mp-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+/* Faixa de aviso: demonstração, simulação, sem conexão. Sempre com texto, nunca só cor. */
+.mp-aviso { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; max-width: min(100%, 300px); padding: 8px 14px;
+  border-radius: 19px; font-size: 13.5px; font-weight: 700; line-height: 1.25; color: var(--bone-50); text-align: left; border: 0; }
+.mp-aviso-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--route); }
+.mp-aviso-erro .mp-aviso-dot { background: var(--r4); }
+.mp-aviso-simulacao .mp-aviso-dot { background: var(--r3); }
+.mp-caps-on { color: var(--route) !important; }
+
+/* Barra de baixo, como a do Mapas do iPhone: pegador, campo de busca e botão do perfil. */
+.mbar { position: absolute; left: 10px; right: 10px; bottom: calc(var(--base-segura) + 10px); z-index: 30; height: 84px; border-radius: 38px;
+  display: flex; align-items: center; gap: 10px; padding: 14px 12px 10px;
+  transition: opacity 220ms ease-out, transform 380ms cubic-bezier(.2,.8,.2,1); }
+.mbar .grabber { position: absolute; top: 6px; left: 50%; margin-left: -18px; }
+.mbar-field { flex: 1; min-width: 0; height: 54px; border-radius: 27px; border: 0; display: flex; align-items: center; gap: 10px;
+  padding: 0 16px 0 15px; background: var(--lg-field); color: var(--bone-500); text-align: left;
+  box-shadow: inset 0 0.5px 0 var(--lg-rim-2); }
+.mbar-ph { flex: 1; min-width: 0; font-size: 17.5px; color: var(--bone-500); white-space: nowrap; overflow: hidden; }
+/* Botão do perfil: neutro, como o avatar na barra dos apps de mapa. O azul fica para a ação. */
+.mbar-av { width: 54px; height: 54px; flex: none; border-radius: 50%; border: 0; padding: 0; color: var(--bone-100);
+  display: inline-flex; align-items: center; justify-content: center; background: var(--lg-field);
+  box-shadow: inset 0 0.5px 0 var(--lg-rim-2); transition: background-color 160ms ease-out; }
+.mbar-av:hover { background: var(--fill-3); }
+.mbar-oculta { opacity: 0; transform: translateY(18px); pointer-events: none; }
+
+/* Cartão ao tocar num bueiro, no padrão dos apps de mapa: cabeçalho, faixa de números, ações. */
+.ms { position: absolute; left: 8px; right: 8px; bottom: calc(var(--base-segura) + 8px); z-index: 40; border-radius: 38px; padding: 7px 16px 16px;
+  transition: transform 440ms cubic-bezier(.2,.85,.2,1), visibility 0s; }
+.ms-fechado { transform: translateY(calc(100% + 40px)); visibility: hidden; transition: transform 440ms cubic-bezier(.2,.85,.2,1), visibility 0s 440ms; }
+.ms-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 2px 0 6px; }
+.ms-title { font-size: 25px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; color: var(--bone-50); }
+.ms-addr { font-size: 15.5px; color: var(--bone-300); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-stat { font-size: 15.5px; font-weight: 700; margin-top: 4px; }
+.ms-x { width: 40px; height: 40px; margin-top: 2px; }
+/* Faixa de números: três colunas separadas por um fio, sem caixas. */
+.ms-fatos { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.25fr); margin: 16px 0 0; padding: 14px 0 13px;
+  border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); }
+.ms-fato { min-width: 0; padding: 0 8px 0 14px; }
+.ms-fato:first-child { padding-left: 6px; }
+.ms-fato + .ms-fato { border-left: 1px solid var(--sep); }
+.ms-fato dt { font-size: 13.5px; font-weight: 600; color: var(--bone-500); white-space: nowrap; }
+.ms-fato dd { margin: 5px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; color: var(--bone-50);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-fato .ms-vazio { color: var(--bone-500); font-weight: 600; }
+.ms-acoes { display: flex; gap: 10px; margin-top: 14px; }
+.ms-acao { flex: 1; min-width: 0; border-radius: 25px; font-size: 16.5px; }
+.ms-acao-2 { flex: 0 1 auto; padding: 0 22px; color: var(--bone-50); }
+
+/* Celular baixo: cartão mais compacto, para sobrar mapa em cima dele. */
+@media (max-height: 720px) {
+  .ms { padding-bottom: 12px; }
+  .ms-title { font-size: 22px; }
+  .ms-fatos { margin-top: 12px; padding: 11px 0 10px; }
+  .ms-fato dd { font-size: 20px; }
+  .ms-acoes { margin-top: 12px; }
+  .ms-acao { min-height: 46px; }
+}
+@media (min-width: 900px) {
+  .mbar, .ms { right: auto; width: calc(var(--coluna) - 20px); }
+  .ms { left: 10px; }
+}
+
+/* ── Marcadores (tampas) sobre o mapa ── */
+.mk { position: relative; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; display: block;
+  cursor: pointer; transition: opacity 320ms cubic-bezier(.2,.8,.2,1); }
+.mk svg { position: absolute; left: 10px; top: 10px; overflow: visible; }
+.mk-anel { position: absolute; left: 4px; top: 4px; width: 36px; height: 36px; border-radius: 50%;
+  border: 2.5px solid var(--bone-50); opacity: 0; transition: opacity 160ms; }
+.mk-sel .mk-anel { opacity: 1; }
+.mk-pulso { position: absolute; left: 10px; top: 10px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--r4);
+  animation: sima-pulse 1.8s cubic-bezier(.2,.7,.3,1) infinite; }
+.mk-rotulo { position: absolute; left: 38px; top: 12px; height: 20px; padding: 0 6px; border-radius: 5px; background: var(--lid-bg);
+  border: 1px solid currentColor; font-family: var(--f-stamp); font-weight: 800; font-size: 13px; line-height: 18px;
+  letter-spacing: 0.06em; white-space: nowrap; }
+.mk-apagado svg { opacity: 0.55; }
+/* Grupo de bueiros próximos: anel com a proporção de cada nível e o total no meio. */
+.mk-grupo svg { left: 0; top: 0; }
+.mk-grupo .mk-pulso { left: 0; top: 0; width: 44px; height: 44px; }
+.mk-total { font-family: var(--f-mono); font-size: 13px; font-weight: 600; fill: var(--bone-50); }
+.mk-oculto { opacity: 0; pointer-events: none; }
+.mov-reduzido .mk-pulso { display: none; }
+/* Ponto azul da posição do usuário. */
+.mk-eu { width: 44px; height: 44px; border-radius: 50%; background: var(--blue-soft); display: flex; align-items: center; justify-content: center; }
+.mk-eu::after { content: ''; width: 18px; height: 18px; border-radius: 50%; background: var(--route); border: 3px solid var(--iron-950); }
+
+/* MapLibre: ajusta os controles padrão ao tema. O prefixo .mp garante prioridade sobre o CSS da
+   biblioteca, que é carregado depois deste arquivo. */
+.mp .maplibregl-map { font-family: var(--f-ui); }
+.mp .maplibregl-canvas:focus-visible { outline: 2px solid var(--route); outline-offset: -2px; }
+.mp .maplibregl-ctrl-bottom-right { bottom: calc(var(--base-segura) + 100px); right: 6px; z-index: 5; }
+.mp .maplibregl-ctrl-attrib, .mp .maplibregl-ctrl-attrib.maplibregl-compact { background: var(--lg-tint-strong); color: var(--bone-300);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 14px; font-size: 11px; }
+.mp .maplibregl-ctrl-attrib a { color: var(--bone-100); }
+.mp .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 24px; }
+.thm-dark .mp .maplibregl-ctrl-attrib-button { filter: invert(1); background-color: transparent; }
+@media (min-width: 900px) { .mp .maplibregl-ctrl-bottom-right { bottom: 6px; } }
+
+/* ── Busca ── */
+.bs-bar { position: sticky; top: 0; z-index: 20; display: flex; gap: 10px; align-items: center;
+  padding: calc(var(--topo-seguro) + 12px) 16px 12px; background: var(--iron-800); }
+.bs-in { position: relative; flex: 1; min-width: 0; }
+.bs-in > .ico { position: absolute; left: 14px; top: 14px; color: var(--bone-500); pointer-events: none; }
+.bs-in input { padding-left: 46px; padding-right: 48px; }
+.bs-in input::-webkit-search-cancel-button { display: none; }
+/* O campo já mostra o foco com borda e brilho azuis; o contorno padrão ficaria dobrado. */
+.input:focus-visible { outline: none; }
+.bs-clear { position: absolute; right: 4px; top: 4px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent;
+  color: var(--bone-500); display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.bs-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; }
+.bs-vazio { padding: 18px 36px; }
+
+/* ── Bairros ── */
+.br-chips { display: flex; gap: 8px; padding: 16px 16px 2px; overflow-x: auto; scrollbar-width: none; }
+.br-chips::-webkit-scrollbar { display: none; }
+.br-card { margin: 14px 16px 0; padding: 18px; }
+.br-bar { display: flex; gap: 3px; height: 10px; margin-top: 16px; border-radius: 5px; overflow: hidden; }
+.br-bar i { display: block; height: 100%; }
+.br-keys { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 12px; }
+.br-keys span { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--bone-300); }
+.br-keys b { color: var(--bone-50); font-weight: 700; }
+.br-code { font-weight: 700; }
+
+/* ── Bueiro ── */
+.bu-head { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+  padding: calc(var(--topo-seguro) + 10px) 16px 12px;
+  background: var(--lg-tint-strong); -webkit-backdrop-filter: blur(26px) saturate(150%); backdrop-filter: blur(26px) saturate(150%); }
+.bu-titulo { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.1; white-space: nowrap; color: var(--bone-50); }
+.bu-sub { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bu-gauge { display: flex; flex-direction: column; align-items: center; padding: 6px 20px 0; }
+.bu-disco { position: relative; width: 250px; height: 250px; }
+.bu-estampa text { font-family: var(--f-stamp); font-size: 12.5px; font-weight: 700; fill: var(--bone-500); }
+.bu-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.bu-pct { font-size: 36px; font-weight: 600; color: var(--bone-50); line-height: 1; }
+@keyframes bu-rise { from { transform: translateY(170px); } to { transform: translateY(0); } }
+.bu-water { animation: bu-rise 1500ms cubic-bezier(.25,.8,.3,1) both; }
+.bu-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 20px 16px 0; }
+.bu-card { padding: 16px; border-radius: 20px; background: var(--card); }
+.bu-num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; color: var(--bone-50); margin-top: 6px; }
+.bu-un { font-family: var(--f-ui); font-size: 16px; font-weight: 600; color: var(--bone-300); margin-left: 5px; }
+.bu-track { height: 7px; border-radius: 4px; background: var(--fill-3); margin-top: 10px; overflow: hidden; }
+.bu-track i { display: block; height: 100%; border-radius: 4px; }
+.bu-sec { padding: 24px 16px 0; }
+.bu-ia { display: flex; gap: 16px; align-items: flex-start; padding: 18px; }
+.bu-ia-num { text-align: center; flex: none; min-width: 84px; }
+.bu-ia-grande { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.bu-fact { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--sep);
+  font-size: 15.5px; color: var(--bone-300); }
+.bu-fact:last-child { border-bottom: 0; }
+.bu-fact b { color: var(--bone-50); font-weight: 700; text-align: right; }
+.bu-actions { display: flex; flex-direction: column; gap: 10px; padding: 24px 16px 16px; }
+
+/* ── Menu ── */
+.mu-top { display: flex; align-items: center; justify-content: flex-end; padding: calc(var(--topo-seguro) + 10px) 16px 0;
+  min-height: calc(var(--topo-seguro) + 54px); }
+.mu-av { width: 50px; height: 50px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--bone-100); background: var(--fill-3); }
+.mu-seg { display: flex; width: 100%; }
+.mu-seg button { flex: 1; height: 38px; padding: 0 6px; }
+.mu-foot { padding: 12px 36px 16px; text-align: center; }
+
+/* ── Em construção ── */
+.ec { padding: 8px 20px 0; }
+.ec-card { margin-top: 20px; padding: 20px; }
+.ec-lista { margin: 12px 0 0; padding: 0 0 0 20px; color: var(--bone-300); font-size: 15.5px; line-height: 1.5; }

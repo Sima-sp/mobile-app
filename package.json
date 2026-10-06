@@ -1,0 +1,30 @@
+{
+  "name": "sima-app",
+  "version": "0.1.0",
+  "description": "App do SIMA-SP (React + Vite): mapa de risco de alagamento por bueiro monitorado",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:rede": "vite --host",
+    "demo": "vite --mode demo",
+    "demo:rede": "vite --mode demo --host",
+    "build": "vite build",
+    "build:demo": "vite build --mode demo",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource-variable/big-shoulders": "^5.3.0",
+    "maplibre-gl": "^6.12.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^8.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.3"
+  }
+}

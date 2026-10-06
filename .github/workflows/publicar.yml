@@ -1,0 +1,54 @@
+# Publica a demonstração do SIMA no GitHub Pages a cada envio para a branch main.
+#
+# O que faz: instala as dependências, roda os testes, gera o app em modo demonstração
+# (npm run build:demo) e publica a pasta dist/. O endereço fica em
+# https://<organização>.github.io/<repositório>/.
+#
+# Para funcionar, o repositório precisa estar com o Pages ligado em
+# Settings → Pages → Source: "GitHub Actions" (uma vez só).
+
+name: Publicar a demonstração
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # permite publicar de novo pelo botão "Run workflow"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Se dois envios chegarem juntos, vale o mais recente.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construir:
+    name: Testar e gerar o app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:demo
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  publicar:
+    name: Publicar no GitHub Pages
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacao.outputs.page_url }}
+    steps:
+      - id: publicacao
+        uses: actions/deploy-pages@v5

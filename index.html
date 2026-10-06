@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#15171a" />
+    <meta name="description" content="SIMA: nível da água e lixo nos bueiros monitorados de São Paulo e chance de alagar nas próximas 3 horas." />
+    <!-- Ícone e modo "app": com "Adicionar à Tela de Início" (iPhone) ou "Instalar app" (Android),
+         o SIMA abre em tela cheia, sem a barra do navegador. -->
+    <link rel="icon" type="image/png" href="./icone-192.png" />
+    <link rel="apple-touch-icon" href="./icone-apple.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="SIMA" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>SIMA · Mapa de risco</title>
+    <script>
+      // Aplica o tema e a preferência de animações antes do primeiro desenho, para a tela não piscar
+      // na cor errada. As mesmas regras estão em src/preferencias/PreferenciasContexto.jsx.
+      (function () {
+        var prefs = {};
+        try { prefs = JSON.parse(localStorage.getItem("sima.preferencias") || "{}") || {}; } catch (e) {}
+        var tema = prefs.tema;
+        if (tema !== "claro" && tema !== "escuro") {
+          tema = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "claro" : "escuro";
+        }
+        var pedeMenos = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var reduzir = prefs.animacoes === "reduzidas" || (prefs.animacoes !== "ligadas" && pedeMenos);
+        document.documentElement.className = (tema === "claro" ? "thm-light" : "thm-dark") + (reduzir ? " mov-reduzido" : "");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="raiz"></div>
+    <noscript>O SIMA precisa de JavaScript para mostrar o mapa.</noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

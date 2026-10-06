@@ -1,0 +1,30 @@
+{
+  "name": "SIMA · Mapa de risco de alagamento",
+  "short_name": "SIMA",
+  "description": "Nível da água nos bueiros monitorados de São Paulo e chance de alagar nas próximas 3 horas.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1726",
+  "theme_color": "#15171a",
+  "icons": [
+    {
+      "src": "icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icone-mascara-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
