@@ -11,6 +11,9 @@
 //
 // Com a propriedade `rota` ({ ativa, outra, origem, destino }), desenha o caminho e enquadra o
 // mapa nele, respeitando a área coberta pelos controles e pelo cartão.
+//
+// As ruas afetadas (o trecho de rua em volta dos bueiros em nível alto ou crítico) saem dos
+// próprios pontos: ver ruasAfetadas.js.
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -26,6 +29,7 @@ import { corNivel, rotuloNivel } from "../dados/niveis";
 import { nivelVisivel, statusAgora } from "../dados/modelo";
 import { lerCoresDoTema, montarEstilo, rotaParaGeoJson } from "./estiloMapa";
 import { agruparPontos } from "./agrupar.js";
+import { assinaturaDasRuas, ruasParaGeoJson } from "./ruasAfetadas.js";
 
 setWorkerUrl(urlDoWorker);
 
@@ -52,8 +56,12 @@ export const MapaBase = forwardRef(function MapaBase(
   toques.current = { aoTocarFundo, medirAreaLivre };
 
   const rotaGeo = useMemo(() => rotaParaGeoJson(rota), [rota]);
-  const ultimoEstilo = useRef({ rota: rotaGeo });
-  ultimoEstilo.current = { rota: rotaGeo };
+  // Os pontos mudam a toda hora (o relógio anda, a chuva da demonstração avança), mas as ruas só
+  // são remontadas quando muda o conjunto de bueiros em risco ou o nível de algum deles.
+  const assinaturaRuas = assinaturaDasRuas(pontos, agora);
+  const ruasGeo = useMemo(() => ruasParaGeoJson(pontos, agora), [assinaturaRuas]);
+  const ultimoEstilo = useRef({ rota: rotaGeo, ruas: ruasGeo });
+  ultimoEstilo.current = { rota: rotaGeo, ruas: ruasGeo };
 
   // Cria o mapa uma vez.
   useEffect(() => {
@@ -101,11 +109,11 @@ export const MapaBase = forwardRef(function MapaBase(
     };
   }, []);
 
-  // Tema ou rota mudaram: remonta o estilo e o MapLibre aplica só a diferença.
+  // Tema, rota ou ruas afetadas mudaram: remonta o estilo e o MapLibre aplica só a diferença.
   useEffect(() => {
     if (!mapa || !pronto) return;
-    mapa.setStyle(montarEstilo(lerCoresDoTema(), { rota: rotaGeo }), { diff: true });
-  }, [mapa, pronto, tema, rotaGeo]);
+    mapa.setStyle(montarEstilo(lerCoresDoTema(), { rota: rotaGeo, ruas: ruasGeo }), { diff: true });
+  }, [mapa, pronto, tema, rotaGeo, ruasGeo]);
 
   // Rota nova: enquadra o caminho inteiro (as duas opções) na área livre do mapa.
   useEffect(() => {
@@ -150,7 +158,7 @@ export const MapaBase = forwardRef(function MapaBase(
       const alvo = Math.min(Math.max((area.topo + topoDoCartao) / 2, area.topo + 26), topoDoCartao - 30);
       deslocamento = [0, alvo - alturaMapa / 2];
     }
-    mapa.easeTo({ center: [lonSel, latSel], zoom: Math.max(mapa.getZoom(), 14), offset: deslocamento, duration: 600 });
+    mapa.easeTo({ center: [lonSel, latSel], zoom: Math.max(mapa.getZoom(), 14.5), offset: deslocamento, duration: 600 });
   }, [mapa, lonSel, latSel]);
 
   useImperativeHandle(ref, () => ({

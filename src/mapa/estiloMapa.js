@@ -13,10 +13,11 @@
 //   de longe só as expressas e avenidas; as ruas de bairro surgem ao aproximar.
 // - Nomes discretos, com contorno na cor do terreno para continuarem legíveis sobre as ruas.
 //
-// O estilo também carrega a rota (fonte "rota"), quando há uma. Como tudo é declarado aqui,
-// MapaBase só precisa chamar setStyle de novo quando o tema ou a rota mudam; o MapLibre compara
-// com o estilo anterior e aplica só a diferença. Os bueiros não fazem parte do estilo: são
-// marcadores desenhados por cima do mapa (MapaBase.jsx).
+// O estilo também carrega a rota (fonte "rota"), quando há uma, e as ruas afetadas (fonte "ruas":
+// o trecho de rua em volta dos bueiros em nível alto ou crítico, ver ruasAfetadas.js). Como tudo é
+// declarado aqui, MapaBase só precisa chamar setStyle de novo quando o tema, a rota ou as ruas
+// mudam; o MapLibre compara com o estilo anterior e aplica só a diferença. Os bueiros não fazem
+// parte do estilo: são marcadores desenhados por cima do mapa (MapaBase.jsx).
 
 import { CONFIG } from "../config.js";
 
@@ -37,6 +38,9 @@ const TOKENS = {
   rota: "--map-route",
   rotaContorno: "--map-route-casing",
   rotaOutra: "--map-route-alt",
+  // Ruas afetadas: as mesmas cores de risco das tampas (alto e crítico).
+  alto: "--r3",
+  critico: "--r4",
 };
 
 /** Lê as cores do tema em vigor. Chamar depois que a classe do tema já está no <html>. */
@@ -73,8 +77,10 @@ const NOME = ["coalesce", ["get", "name:pt"], ["get", "name:latin"], ["get", "na
  * @param {object} cores           resultado de lerCoresDoTema()
  * @param {object} opcoes
  * @param {object} opcoes.rota     rota a desenhar (rotaParaGeoJson)
+ * @param {object} opcoes.ruas     ruas afetadas a pintar (ruasParaGeoJson, em ruasAfetadas.js)
  */
-export function montarEstilo(cores, { rota } = {}) {
+export function montarEstilo(cores, { rota, ruas } = {}) {
+  const VAZIO = { type: "FeatureCollection", features: [] };
   const papel = (nome) => ["==", ["get", "papel"], nome];
   const larguraDaRota = largura(1.3, 9, 3.5, 14, 6, 18, 12);
   // Cada tipo de via: quais classes, a cor, em que zoom entra, a largura por zoom e, nas maiores,
@@ -114,7 +120,8 @@ export function montarEstilo(cores, { rota } = {}) {
     glyphs: CONFIG.mapa.urlGlifos,
     sources: {
       base: { type: "vector", url: CONFIG.mapa.urlTiles },
-      rota: { type: "geojson", data: rota ?? { type: "FeatureCollection", features: [] } },
+      rota: { type: "geojson", data: rota ?? VAZIO },
+      ruas: { type: "geojson", data: ruas ?? VAZIO },
     },
     layers: [
       { id: "fundo", type: "background", paint: { "background-color": cores.fundo } },
@@ -147,6 +154,18 @@ export function montarEstilo(cores, { rota } = {}) {
       { id: "trilhos", type: "line", source: "base", "source-layer": "transportation", minzoom: 12,
         filter: ["all", LINHA, classe("rail", "transit")],
         paint: { "line-color": cores.trilho, "line-width": 1.2, "line-dasharray": [4, 3] } },
+
+      // Ruas afetadas: o trecho em volta dos bueiros em nível alto ou crítico, na cor do nível.
+      // Fica por cima das ruas e por baixo da rota e dos nomes. Um contorno na cor do terreno
+      // separa o trecho da rua comum; a linha é um pouco translúcida para o nome da rua, quando
+      // cai em cima, continuar legível. Entra aos poucos a partir do zoom da cidade inteira.
+      { id: "ruas-afetadas-contorno", type: "line", source: "ruas", minzoom: 10.5, layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": cores.contorno, "line-width": largura(1.4, 10.5, 3.5, 14, 9, 18, 26),
+          "line-opacity": ["interpolate", ["linear"], ["zoom"], 10.5, 0, 11.5, 0.7] } },
+      { id: "ruas-afetadas", type: "line", source: "ruas", minzoom: 10.5, layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": ["match", ["get", "nivel"], 4, cores.critico, cores.alto],
+          "line-width": largura(1.4, 10.5, 2, 14, 6, 18, 20),
+          "line-opacity": ["interpolate", ["linear"], ["zoom"], 10.5, 0, 11.5, 0.9] } },
 
       // Rota: a outra opção em cinza por baixo; a escolhida em azul, com contorno para destacar
       // das ruas; a partida é um anel e a chegada um ponto cheio.
