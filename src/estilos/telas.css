@@ -387,8 +387,8 @@
 /* ── Sensor ao vivo ── */
 .se-intro { padding: 12px 20px 0; }
 .se-painel { margin: 16px 16px 0; padding: 14px 16px 16px; }
-/* Bueiro em corte. As cores vêm dos tokens: a água é azul (como no mapa) e o sensor molhado usa
-   a cor do nível crítico, a mesma que o bueiro ganharia no mapa. */
+/* Bueiro em corte. As cores vêm dos tokens: a água é azul (como no mapa) e as marcas na parede
+   usam as cores dos níveis, as mesmas que o bueiro ganharia no mapa. */
 .se-desenho { display: block; width: 100%; height: auto; max-height: 250px; }
 .se-terra { fill: var(--fill-2); }
 .se-oco { fill: var(--lid-bg); }
@@ -397,38 +397,46 @@
 .se-frestas { stroke: var(--lid-bg); stroke-width: 4; stroke-linecap: round; fill: none; }
 .se-agua { fill: var(--route-deep); opacity: 0.85; transition: transform 900ms cubic-bezier(.3,.7,.2,1), opacity 300ms; }
 .se-desenho-vazio .se-agua { opacity: 0.35; }
-.se-marca { stroke: var(--bone-500); stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
 .se-fio { stroke: var(--bone-500); stroke-width: 2; fill: none; stroke-linejoin: round; }
 .se-placa { fill: var(--card); stroke: var(--bone-500); stroke-width: 1.5; }
-.se-sensor { fill: var(--bone-300); transition: fill 300ms; }
-.se-hastes { stroke: var(--bone-300); stroke-width: 3; stroke-linecap: round; fill: none; transition: stroke 300ms; }
-.se-desenho-molhado .se-sensor { fill: var(--r4); }
-.se-desenho-molhado .se-hastes { stroke: var(--r4); }
-.se-seta { stroke: var(--bone-500); stroke-width: 1.5; fill: none; }
+.se-sensor { fill: var(--bone-300); }
 .se-letra { font-family: var(--f-ui); font-size: 12px; font-weight: 700; fill: var(--bone-300); }
-.se-letra-agua { transition: y 900ms; }
+/* Marcas de onde começa cada nível: um risco na parede do poço, na cor do nível. */
+.se-lim path { stroke-width: 3; stroke-linecap: round; fill: none; }
+.se-lim-n2 path { stroke: var(--r2); }
+.se-lim-n3 path { stroke: var(--r3); }
+.se-lim-n4 path { stroke: var(--r4); }
+/* A medida, do sensor até a água. Anda junto com a água (mesma duração). */
+.se-regua-linha { fill: var(--bone-100); transition: transform 900ms cubic-bezier(.3,.7,.2,1); }
+.se-regua-anda { transition: transform 900ms cubic-bezier(.3,.7,.2,1); }
+.se-regua-anda path { stroke: var(--bone-100); stroke-width: 1.5; stroke-linecap: round; fill: none; }
+.se-letra-medida { font-size: 15px; fill: var(--bone-50); font-variant-numeric: tabular-nums; }
 .se-estado { margin-top: 12px; }
 .se-titulo { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--bone-50); margin-bottom: 4px; }
-.se-titulo.se-molhado { color: var(--r4); }
+.se-titulo.se-n3 { color: var(--r3); }
+.se-titulo.se-n4 { color: var(--r4); }
 .se-origem { margin-top: 6px; font-variant-numeric: tabular-nums; }
-.se-calibrar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.se-calibrar .btn { flex: 1 1 140px; min-height: 46px; padding: 0 12px; font-size: 15.5px; }
-.se-calibrar-ajustes { padding: 0 16px 14px; margin-top: 0; }
-.se-calibrar-ajustes .btn-line { flex: 0 0 auto; }
 .se-no-app { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--sep); }
 .se-no-app b { display: block; color: var(--bone-50); font-weight: 700; }
 .se-acoes { padding: 14px 16px 0; }
 .se-acoes .btn { width: 100%; border-radius: 25px; }
-.se-situacao { padding: 10px 20px 0; }
-.se-erro { padding: 10px 20px 0; color: var(--r3); }
+.se-situacao { padding: 10px 20px 0; overflow-wrap: anywhere; }
+.se-erro { padding: 10px 20px 0; color: var(--bone-100); overflow-wrap: anywhere; }
+.se-erro p { color: var(--r3); font-weight: 700; }
+.se-erro ul { margin: 6px 0 0; padding-left: 18px; }
+.se-erro li + li { margin-top: 4px; }
+.se-erro code { font-family: var(--f-mono); font-size: 0.92em; }
 .se-historico { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 16px; padding: 14px 16px; }
+/* Um ponto por leitura. Baixo é só o contorno; os outros níveis vêm cheios, na cor do nível.
+   Leitura inválida (n0) fica com o contorno apagado. */
 .se-ponto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--iron-400); flex: none; }
-.se-ponto-seco { border-color: var(--bone-300); }
-.se-ponto-molhado { border-color: var(--r4); background: var(--r4); }
-.se-legenda { display: flex; align-items: center; gap: 6px; padding: 8px 36px 0; }
-.se-legenda .se-ponto + .se-ponto, .se-legenda .se-ponto:not(:first-child) { margin-left: 10px; }
-.se-legenda span { margin-left: auto; }
+.se-ponto-n1 { border-color: var(--r1); }
+.se-ponto-n2 { border-color: var(--r2); background: var(--r2); }
+.se-ponto-n3 { border-color: var(--r3); background: var(--r3); }
+.se-ponto-n4 { border-color: var(--r4); background: var(--r4); }
 .se-nota { padding: 8px 36px 0; }
+.se-simular { padding: 10px; }
+.se-faixa { padding: 10px 0 0; }
 .se-passos { list-style: none; padding: 0; }
 .se-passos li { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; }
 .se-passos li + li { border-top: 1px solid var(--sep); }
@@ -439,8 +447,15 @@
 .se-ajustes summary { min-height: 44px; display: flex; align-items: center; padding: 0 20px; border-radius: 14px; cursor: pointer;
   color: var(--route); font-size: 15.5px; font-weight: 700; }
 .se-ajustes summary:hover { background: var(--fill-2); }
-.se-select { height: 40px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--fill-2); color: var(--bone-50); font: inherit; font-size: 15.5px; }
-.se-linha-cal:hover { background: transparent; }
+.se-ajustes-grp { margin: 10px 0 0; }
+.se-endereco { padding: 14px 16px 12px; }
+.se-endereco-linha { display: flex; gap: 8px; margin: 6px 0 8px; }
+.se-campo { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--fill-2); color: var(--bone-50);
+  font-family: var(--f-mono); font-size: 15px; }
+.se-campo:focus-visible { outline: 2px solid var(--route); outline-offset: 1px; }
+.se-campo[aria-invalid="true"] { outline: 2px solid var(--r3); outline-offset: 1px; }
+.se-endereco-linha .btn { flex: none; min-height: 44px; padding: 0 16px; font-size: 15.5px; }
+.se-linha-parada:hover { background: transparent; }
 label.row { cursor: pointer; }
 .se-sub { margin: 16px 20px 6px; font-size: 13.5px; font-weight: 700; color: var(--bone-500); }
 .se-cru { margin: 0; padding: 12px 16px; border-radius: 16px; background: var(--card); color: var(--bone-300); font-family: var(--f-mono); font-size: 13px;

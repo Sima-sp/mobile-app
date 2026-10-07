@@ -173,10 +173,11 @@ aprendizado; é o ponto de `chanceComSensor`.
 lixo na conta. Saiu: o sensor do projeto detecta água, não lixo. O backend e o `ml-service` ainda
 têm o campo `porcentagemLixo`; se ele vier em `/previsoes`, o app ignora.
 
-**O protótipo detecta molhado ou seco, não o nível.** O ESP32 que o grupo tem hoje avisa quando a
-água chega até ele (ver "Sensor ao vivo"); não informa "71 % cheio". A demonstração e o simulador
-continuam com o nível em %, que é o que o sistema completo prevê medir. Enquanto o sensor for
-só molhado/seco, a leitura real equivale a dois pontos dessa escala: vazio ou cheio.
+**O protótipo mede a distância até a água.** O ESP32 que o grupo tem hoje mede, em centímetros,
+a distância do sensor até a água (ver "Sensor ao vivo"); o servidor do sensor classifica essa
+distância em quatro níveis. Ele ainda não informa "71 % cheio": para isso falta dizer a
+profundidade do bueiro (cheio = distância mínima, vazio = distância até o fundo). A demonstração
+e o simulador continuam com o nível em %, que é o que o sistema completo prevê mostrar.
 
 **Diferença para o serviço de IA de hoje.** No `ml-service` v1 o modelo calcula a chance só com
 a chuva e o lugar, e a leitura do sensor sobe o **nível** por regra (água ≥ 80 %, e lixo ≥ 60 %
@@ -186,36 +187,76 @@ sistema de verdade se comportar como a demonstração, a mesma conta precisa ent
 
 ## Sensor ao vivo
 
-`/sensor` (Menu → "Sensor ao vivo") mostra o **protótipo do sensor** funcionando: o ESP32 fica
-ligado por cabo USB ao computador e a tela mostra, em tempo real, se ele está **seco** ou
-**molhado**, num desenho do bueiro em corte, e como o bueiro apareceria no mapa.
+`/sensor` (Menu → "Sensor ao vivo") mostra o **protótipo do sensor** funcionando, em tempo real:
+o nível da água num desenho do bueiro em corte, a distância medida e como aquele bueiro
+apareceria no mapa.
+
+**O caminho da leitura.** O protótipo mede a distância do sensor até a água (em cm) e envia pelo
+Wi-Fi ao **servidor do sensor**, um programa em Node do grupo do IoT (porta 3000). A tela
+pergunta a última leitura a esse servidor uma vez por segundo:
+
+```
+ESP32 ──Wi-Fi──▶ POST /api/leitura   { "device": "...", "distancia": 32.4 }
+tela  ─────────▶ GET  /api/leitura   a última leitura (ou null, se ainda não chegou nenhuma)
+                 GET  /api/limites   { "zonaCega": 15, "critico": 20, "alerta": 30, "atencao": 45 }
+```
+
+**Da distância ao nível** (`src/sensor/nivel.js`, com testes). Quanto menor a distância, mais
+cheio o bueiro. A regra e os limites são os do servidor do sensor; os nomes são os do mapa:
+
+| Distância até a água | Servidor do sensor | App |
+|---|---|---|
+| até 20 cm | Crítico | Crítico |
+| até 30 cm | Alerta | Alto |
+| até 45 cm | Atenção | Médio |
+| acima de 45 cm | Normal | Baixo |
+
+Os limites vêm de `GET /api/limites`; sem resposta, valem os da tabela. Três cuidados da tela:
+
+- **Medida impossível não vira bueiro cheio.** Zero, negativo ou acima de 6 m é o que um sensor
+  de distância devolve quando não recebe o eco. A tela mostra "Leitura inválida" em vez de um
+  nível. (O servidor do sensor, em 06/10/2026, classifica `0` como Crítico.)
+- **O nível não pisca.** A tela mostra a mediana das leituras válidas dos últimos 3,5 s (até
+  três): uma medida isolada fora do lugar não muda o nível.
+- **Sensor parado.** Sem leitura nova por 10 s (ou três vezes o ritmo normal do sensor), a tela
+  avisa e deixa de mostrar nível. O servidor guarda a última leitura para sempre; quem percebe
+  que ela ficou velha é a tela, pelo carimbo `em`.
 
 **Para usar na bancada:**
 
-1. Abra o app no **Chrome ou no Edge, no computador**. Firefox e Safari não têm a porta serial;
-   no celular, use a simulação da própria tela.
-2. Feche o Monitor Serial do Arduino: só um programa usa a porta de cada vez.
-3. Ligue o ESP32 no cabo, toque em "Conectar o sensor" e escolha a porta na janela do navegador
-   (costuma ser `ttyUSB0`, `ttyACM0` ou `COM3`). Nas próximas vezes a tela conecta sozinha.
-4. Se não chegar nada: em "Ajustes do sensor", confira a velocidade (a do `Serial.begin(...)` no
-   código do ESP32; o padrão da tela é 115200).
-5. **No Linux**, o usuário precisa estar no grupo `dialout`
-   (`sudo usermod -aG dialout $USER` e entrar de novo na sessão).
+1. Ligue o servidor do sensor (`node server.js`) **no mesmo computador que vai mostrar a tela** e
+   confira que o ESP32 está na mesma rede Wi-Fi e enviando.
+2. Abra o app no **Chrome** desse computador, vá em Menu → "Sensor ao vivo" e toque em
+   "Conectar ao sensor". A tela procura o servidor em `http://localhost:3000`.
+3. O Chrome pergunta se a página pode **acessar a rede local** (ou outros apps do dispositivo):
+   **permita**. Sem isso o pedido nem sai. Só pergunta uma vez.
+4. Nas próximas vezes a tela conecta sozinha naquele computador.
 
-**O que o ESP32 precisa escrever.** Uma linha por leitura. A tela aceita os formatos mais comuns
-(`src/sensor/interpretar.js`, com testes): `molhado` / `seco`, `AGUA DETECTADA` / `sem agua`,
-`1` / `0`, `agua: 1`, `umidade=1830`, `{"molhado": true}`... As mensagens de inicialização do
-ESP32 são ignoradas. Em "Ajustes do sensor" aparece o texto cru que chegou, para conferir.
+**Servidor em outro computador.** O app publicado é https e o servidor do sensor é http: fora
+do próprio computador, o navegador tende a bloquear o pedido. O caminho garantido é abrir o app
+por `npm run demo` (http://localhost:5173) e pôr o endereço do servidor em "Ajustes do sensor"
+(`192.168.0.10` vira `http://192.168.0.10:3000`). Num celular, use a simulação.
 
-**Calibragem.** Se o sensor mandar um número que não seja 0 ou 1 (o valor bruto da leitura), a
-tela pede para marcar "agora está seco" e "agora está molhado"; daí em diante vale a referência
-mais próxima. Serve também para sensores em que 0 quer dizer molhado. Fica guardada no aparelho.
+**Simulação.** "Simular sem o sensor" põe um controle embaixo do desenho: arrastando, a água
+sobe e o nível muda. A tela avisa que é simulação. É a reserva se o Wi-Fi ou o protótipo
+falharem, e o jeito de mostrar a tela num celular.
 
-**Simulação.** "Simular sem o sensor" troca o estado à mão e avisa na tela que é simulação. É a
-reserva para o caso de o cabo falhar.
+**Ajustes do sensor** mostra o endereço do servidor, os limites em uso (e se vieram do servidor)
+e a última resposta crua do servidor, para conferir.
 
-**O que a tela não faz.** A leitura não vai para o servidor nem vira um bueiro do mapa: fica só
-nesta tela. O passo seguinte é o ESP32 enviar a leitura ao backend (`POST /api/leituras`).
+**O que foi conferido e o que não foi.** Conferido com uma cópia do servidor do grupo e leituras
+enviadas como o ESP32 enviaria: os quatro níveis, a leitura inválida, o sensor parado, o servidor
+caindo e voltando, e o app em https falando com `http://localhost:3000` depois de permitir o
+acesso (Chromium 141). **Não conferido:** o ESP32 de verdade e o app publicado lendo de outro
+computador.
+
+**O que a tela não faz.** A leitura não vai para o backend do SIMA nem vira um bueiro do mapa:
+fica só nesta tela. O passo seguinte é o ESP32 (ou o servidor do sensor) enviar a leitura ao
+backend em Java, e o backend guardar a profundidade do bueiro para transformar distância em %.
+
+**Histórico desta tela.** Uma primeira versão (06/10/2026, commit `47cb659`) lia o ESP32 pelo
+cabo USB e mostrava só "seco" ou "molhado", porque era o que se sabia do protótipo. Com o código
+do servidor em mãos, a tela passou a ler a distância pelo servidor e a leitura por cabo saiu.
 
 ## Ruas afetadas
 
@@ -397,8 +438,8 @@ src/
     regioes.js             aviso por região: cobertura mínima, limiares e as frases
     simulador.js           simulador da tela da IA: lugares, cenários e explicações
   sensor/
-    interpretar.js         entende o que o ESP32 escreve pelo cabo: molhado, seco ou um número (e o teste)
-    serial.js              abre a porta USB pelo navegador (Web Serial) e entrega linha por linha
+    nivel.js               a distância medida (cm) vira nível: limites, leitura inválida, mediana (e o teste)
+    servidor.js            pergunta a leitura ao servidor do sensor (o Node do grupo do IoT) e trata a permissão do navegador
     PontosContexto.jsx     guarda os pontos e atualiza sozinho (usePontos)
     modelo.test.js         testes das regras acima
     demo.test.js           testes da demonstração
@@ -434,7 +475,7 @@ src/
     Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
     Avisos.jsx             avisos por região
     ComoFunciona.jsx       como a IA funciona, com o simulador
-    Sensor.jsx             sensor ao vivo: o protótipo (ESP32) pelo cabo USB
+    Sensor.jsx             sensor ao vivo: o protótipo (ESP32), lido do servidor do sensor
     Menu.jsx               atalhos, tema e ajustes
     EmConstrucao.jsx       telas das próximas etapas e a tela Sobre
   estilos/
