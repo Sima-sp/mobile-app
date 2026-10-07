@@ -4,46 +4,82 @@
 // embaixo da tampa, apontado para baixo: quanto MENOR a distância, MAIS CHEIO está o bueiro.
 // Ele não mede lixo.
 //
-// A regra é a mesma do servidor do sensor (o programa em Node do grupo do IoT), para a tela do
-// app e o painel deles dizerem a mesma coisa:
+// O ALCANCE DO SENSOR (informado pelo grupo em 07/10/2026): ele mede de 20 cm a 2000 cm.
+// - Abaixo de 20 cm (a "zona cega") o sensor não mede com precisão. Por isso o nível crítico
+//   começa ACIMA de 20 cm: se começasse em 20, o sensor só chegaria nele já sem medir direito.
+// - Acima de 2000 cm a medida não existe: é erro de leitura.
 //
-//   distância            servidor do sensor    app (mesma escala do mapa)
-//   até `critico`        Crítico               4  Crítico
-//   até `alerta`         Alerta                3  Alto
-//   até `atencao`        Atenção               2  Médio
-//   acima disso          Normal                1  Baixo
+//   distância                    nível (mesma escala do mapa)
+//   até `critico`  (30 cm)       4  Crítico
+//   até `alerta`   (45 cm)       3  Alto
+//   até `atencao`  (60 cm)       2  Médio
+//   acima disso                  1  Baixo
 //
-// Os limites vêm do servidor (GET /api/limites); sem resposta, valem os de LIMITES_PADRAO, que
-// são os do código do servidor em 06/10/2026.
+// Os três limites são desta página e podem ser trocados em "Ajustes do sensor" (a montagem da
+// bancada muda de um dia para o outro); ficam guardados no aparelho. O servidor do sensor (o
+// programa em Node do grupo do IoT) tem os limites dele, de antes de o alcance ser conhecido
+// (crítico 20, alerta 30, atenção 45): a página não os usa para dar o nível, só avisa quando são
+// diferentes.
 //
 // Só faz contas: não fala com o servidor (isso é do servidor.js) nem com a tela.
 
-/** Limites em centímetros, iguais aos do servidor do sensor. */
-export const LIMITES_PADRAO = Object.freeze({ zonaCega: 15, critico: 20, alerta: 30, atencao: 45 });
+/** O que o sensor consegue medir, em centímetros. */
+export const ALCANCE = Object.freeze({ minimo: 20, maximo: 2000 });
+
+/** Limites em centímetros. `zonaCega` é o mínimo do sensor: abaixo dela a medida não é confiável. */
+export const LIMITES_PADRAO = Object.freeze({ zonaCega: ALCANCE.minimo, critico: 30, alerta: 45, atencao: 60 });
 
 /** Acima disto (em cm) a medida não é de um bueiro: é erro de leitura. */
-export const DISTANCIA_MAXIMA = 600;
+export const DISTANCIA_MAXIMA = ALCANCE.maximo;
 
 const positivo = (v) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
 
 /**
- * Confere os limites recebidos do servidor. Se faltar algum ou a ordem não fizer sentido
- * (crítico < alerta < atenção), devolve os limites padrão.
- * `zonaCega` é a distância abaixo da qual o sensor deixa de medir direito; sem ela, vale 0.
+ * true se os três limites servem para este sensor: em ordem (crítico < alerta < atenção), com o
+ * crítico acima do mínimo que o sensor mede e a atenção dentro do alcance.
  */
-export function arrumarLimites(recebido) {
-  const critico = positivo(recebido?.critico);
-  const alerta = positivo(recebido?.alerta);
-  const atencao = positivo(recebido?.atencao);
-  if (critico === null || alerta === null || atencao === null || !(critico < alerta && alerta < atencao)) return LIMITES_PADRAO;
-  const zonaCega = positivo(recebido?.zonaCega);
-  return { zonaCega: zonaCega !== null && zonaCega <= critico ? zonaCega : 0, critico, alerta, atencao };
+export function limitesValidos(limites) {
+  const critico = positivo(limites?.critico);
+  const alerta = positivo(limites?.alerta);
+  const atencao = positivo(limites?.atencao);
+  return critico !== null && alerta !== null && atencao !== null
+    && critico > ALCANCE.minimo && critico < alerta && alerta < atencao && atencao <= ALCANCE.maximo;
+}
+
+/**
+ * Confere os limites escolhidos em Ajustes (ou guardados no aparelho). Se faltar algum, a ordem
+ * não fizer sentido ou eles não couberem no alcance do sensor, devolve os limites padrão.
+ * A zona cega é sempre o mínimo do sensor: não é uma escolha.
+ */
+export function arrumarLimites(escolhidos) {
+  if (!limitesValidos(escolhidos)) return LIMITES_PADRAO;
+  return { zonaCega: ALCANCE.minimo, critico: escolhidos.critico, alerta: escolhidos.alerta, atencao: escolhidos.atencao };
+}
+
+/**
+ * Lê a resposta de GET /api/limites do servidor do sensor:
+ *   { "zonaCega": 15, "critico": 20, "alerta": 30, "atencao": 45 }
+ * Serve para duas coisas: saber que quem respondeu é mesmo o servidor do sensor, e avisar quando
+ * os limites dele são diferentes dos desta página. Não entra na conta do nível.
+ * @returns {{ critico: number, alerta: number, atencao: number }|null}  null se a resposta não é a esperada
+ */
+export function lerLimitesDoServidor(resposta) {
+  const critico = positivo(resposta?.critico);
+  const alerta = positivo(resposta?.alerta);
+  const atencao = positivo(resposta?.atencao);
+  if (critico === null || alerta === null || atencao === null || !(critico < alerta && alerta < atencao)) return null;
+  return { critico, alerta, atencao };
+}
+
+/** true se os dois conjuntos de limites dão o mesmo nível para qualquer distância. */
+export function mesmosLimites(a, b) {
+  return Boolean(a && b) && a.critico === b.critico && a.alerta === b.alerta && a.atencao === b.atencao;
 }
 
 /**
  * true se a distância pode ser uma medida de verdade.
- * Zero, negativo ou um valor enorme é o que o sensor devolve quando não recebe o eco de volta;
- * não pode virar "bueiro cheio".
+ * Zero, negativo ou um valor além do alcance é o que o sensor devolve quando não recebe o eco
+ * de volta; não pode virar "bueiro cheio".
  */
 export function distanciaValida(distancia) {
   return typeof distancia === "number" && Number.isFinite(distancia) && distancia > 0 && distancia <= DISTANCIA_MAXIMA;
@@ -58,7 +94,10 @@ export function nivelDaDistancia(distancia, limites = LIMITES_PADRAO) {
   return 1;
 }
 
-/** true se a água está tão perto do sensor que a medida deixa de ser confiável. */
+/**
+ * true se a água está tão perto do sensor que a medida deixa de ser confiável (abaixo do mínimo
+ * que ele mede). O nível continua crítico: perto assim, o bueiro está cheio de qualquer jeito.
+ */
 export function naZonaCega(distancia, limites = LIMITES_PADRAO) {
   return distanciaValida(distancia) && distancia < limites.zonaCega;
 }
@@ -87,7 +126,7 @@ export function distanciaFirme(recentes) {
  *   { "device": "esp32-01", "distancia": 32.4, "status": "atencao", "nivel": 1, "titulo": "Atenção",
  *     "mensagem": "...", "em": "2026-10-07T12:00:00.000Z" }
  * O app usa `distancia` (cm), `em` (para saber se a leitura é nova) e `device`. A classificação
- * do servidor não é usada: o app refaz a conta com os mesmos limites.
+ * do servidor não é usada: o app faz a conta com os limites desta página.
  * @returns {{ distancia: number, em: number|null, marca: string, aparelho: string|null }|null}
  *   null quando ainda não há leitura (o servidor responde `null`) ou a resposta não tem a medida.
  */

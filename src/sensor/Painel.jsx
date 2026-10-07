@@ -17,7 +17,8 @@
 //     outros casos, depois de tocar em "Conectar ao sensor"; ou
 //   - da simulação ("Simular sem o sensor"), sempre identificada como simulação. É a reserva se o
 //     Wi-Fi ou o protótipo falharem.
-// A conta da distância para o nível está em nivel.js (com testes).
+// A conta da distância para o nível está em nivel.js (com testes). O sensor mede de 20 cm a
+// 2000 cm; os limites de cada nível são desta página e podem ser trocados em "Ajustes do sensor".
 //
 // A leitura fica só nesta página: não vira um bueiro do mapa nem vai para o backend do SIMA. Isso
 // é o passo seguinte (o ESP32 enviar a leitura ao backend em Java).
@@ -27,7 +28,8 @@ import { rotuloNivel } from "../dados/niveis";
 import { usePreferencias } from "../preferencias/PreferenciasContexto";
 import { Tampa } from "../componentes/Tampa";
 import {
-  LIMITES_PADRAO, arrumarLimites, distanciaFirme, escalaDoDesenho, lerLeitura, naZonaCega, nivelDaDistancia, textoDaDistancia,
+  ALCANCE, LIMITES_PADRAO, arrumarLimites, distanciaFirme, escalaDoDesenho, lerLeitura, lerLimitesDoServidor, limitesValidos, mesmosLimites,
+  naZonaCega, nivelDaDistancia, textoDaDistancia,
 } from "./nivel";
 import { ENDERECO_PADRAO, acompanharSensor, arrumarEndereco, buscarLimites, podeSerBloqueado } from "./servidor";
 
@@ -48,8 +50,8 @@ const PARADO_MS = 10000;
  * sem atraso. A mediana só entra em ação se o envio ficar mais rápido que isto.
  */
 const JANELA_MS = 1500;
-/** A simulação vai desta distância (quase encostando no sensor) até o fim do desenho. */
-const SIMULADA_MINIMA = 5;
+/** A simulação vai desta distância (já dentro da zona cega do sensor, para dar para mostrá-la) até o fim do desenho. */
+const SIMULADA_MINIMA = 10;
 /** true quando a página foi gerada como arquivo único (npm run painel): não há app ao lado para onde voltar. */
 const ARQUIVO_UNICO = import.meta.env.MODE === "painel";
 
@@ -63,11 +65,16 @@ const DICA_DO_NIVEL = {
 function lerAjustes() {
   try {
     const guardado = JSON.parse(localStorage.getItem(CHAVE) || "{}") || {};
-    return { endereco: arrumarEndereco(guardado.endereco) ?? ENDERECO_PADRAO, ligar: guardado.ligar === true };
+    return { endereco: arrumarEndereco(guardado.endereco) ?? ENDERECO_PADRAO, ligar: guardado.ligar === true, limites: arrumarLimites(guardado.limites) };
   } catch {
-    return { endereco: ENDERECO_PADRAO, ligar: false };
+    return { endereco: ENDERECO_PADRAO, ligar: false, limites: LIMITES_PADRAO };
   }
 }
+
+/** Os três limites como texto, para os campos de Ajustes. */
+const emTexto = (limites) => ({ critico: String(limites.critico), alerta: String(limites.alerta), atencao: String(limites.atencao) });
+/** O que foi digitado nos campos, como números (vírgula vale como ponto); campo vazio vira NaN. */
+const emNumeros = (digitados) => Object.fromEntries(Object.entries(digitados).map(([nome, texto]) => [nome, texto.trim() === "" ? NaN : Number(texto.replace(",", "."))]));
 
 const haQuanto = (quando, agora) => {
   const s = Math.max(0, Math.round((agora - quando) / 1000));
@@ -82,8 +89,10 @@ export default function Painel() {
   const [servidorProprio, setServidorProprio] = useState(null);
   const [conexao, setConexao] = useState("fora"); // "fora" | "procurando" | "ligado" | "sem-servidor"
   const [leituras, setLeituras] = useState([]); // do servidor: { distancia, quando, marca, aparelho }
-  const [limites, setLimites] = useState(LIMITES_PADRAO);
-  const [limitesDoServidor, setLimitesDoServidor] = useState(false);
+  // Os limites de cada nível são desta página (Ajustes); os do servidor do sensor só são comparados.
+  const limites = ajustes.limites;
+  const [limitesDigitados, setLimitesDigitados] = useState(() => emTexto(ajustes.limites));
+  const [limitesDoServidor, setLimitesDoServidor] = useState(null);
   const [resposta, setResposta] = useState(undefined); // a última resposta crua do servidor
   const [permissao, setPermissao] = useState("desconhecida"); // o que o navegador diz sobre acessar a rede local
   const [buscaDesde, setBuscaDesde] = useState(0); // quando a página começou a procurar o servidor
@@ -123,7 +132,7 @@ export default function Painel() {
       return undefined;
     }
     buscarLimites(aqui.origin)
-      .then((recebidos) => { if (vivo) setServidorProprio(arrumarLimites(recebidos) !== LIMITES_PADRAO); })
+      .then((recebidos) => { if (vivo) setServidorProprio(lerLimitesDoServidor(recebidos) !== null); })
       .catch(() => { if (vivo) setServidorProprio(false); });
     return () => { vivo = false; };
   }, []);
@@ -171,13 +180,8 @@ export default function Painel() {
           // Uma vez por conexão (e de novo se o servidor cair e voltar, pois pode ter mudado).
           pedirLimites = false;
           buscarLimites(endereco)
-            .then((recebidos) => {
-              if (!vivo) return;
-              const arrumados = arrumarLimites(recebidos);
-              setLimites(arrumados);
-              setLimitesDoServidor(arrumados !== LIMITES_PADRAO);
-            })
-            .catch(() => { if (vivo) { setLimites(LIMITES_PADRAO); setLimitesDoServidor(false); } });
+            .then((recebidos) => { if (vivo) setLimitesDoServidor(lerLimitesDoServidor(recebidos)); })
+            .catch(() => { if (vivo) setLimitesDoServidor(null); });
         }
         const lida = lerLeitura(crua);
         if (!lida) {
@@ -220,6 +224,20 @@ export default function Painel() {
     if (!ajustesAbertos) setTimeout(() => ajustesNaTela.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 60);
   };
 
+  // Limites de cada nível: o que é digitado vale na hora, se couber no sensor; senão, a página
+  // segue com os limites anteriores e diz o que está errado.
+  const mudarLimite = (nome, texto) => {
+    const digitados = { ...limitesDigitados, [nome]: texto };
+    setLimitesDigitados(digitados);
+    const numeros = emNumeros(digitados);
+    if (limitesValidos(numeros)) mudarAjustes({ limites: arrumarLimites(numeros) });
+  };
+  const voltarAosLimitesPadrao = () => {
+    setLimitesDigitados(emTexto(LIMITES_PADRAO));
+    mudarAjustes({ limites: LIMITES_PADRAO });
+  };
+  const limitesErrados = !limitesValidos(emNumeros(limitesDigitados));
+
   const usarEndereco = () => {
     const arrumado = arrumarEndereco(enderecoDigitado);
     setEnderecoErrado(arrumado === null);
@@ -259,7 +277,7 @@ export default function Painel() {
     if (naZonaCega(distancia, limites)) frase += ` A menos de ${textoDaDistancia(limites.zonaCega)}, o sensor já não mede com precisão.`;
   } else if (invalida) {
     titulo = "Leitura inválida";
-    frase = `O sensor mandou ${String(ultima.distancia).replace(".", ",")} cm, que não é uma medida possível. Em geral é o sensor sem receber o eco de volta: confira se ele está apontado para a água.`;
+    frase = `O sensor mandou ${String(ultima.distancia).replace(".", ",")} cm, que não é uma medida possível (ele alcança até ${ALCANCE.maximo} cm). Em geral é o sensor sem receber o eco de volta: confira se ele está apontado para a água.`;
   } else if (parado) {
     titulo = "Sensor parado";
     // O firmware só envia quando consegue medir: silêncio pode ser a placa desligada, o Wi-Fi ou o sensor sem eco.
@@ -430,10 +448,29 @@ export default function Painel() {
             )}
           </div>
           <div className="plate ps-ajuste">
-            <p className="small"><b>Limites de cada nível</b>
-              Crítico até {textoDaDistancia(limites.critico)}, alto até {textoDaDistancia(limites.alerta)}, médio até {textoDaDistancia(limites.atencao)} do sensor.
-              {" "}{limitesDoServidor ? "Vieram do servidor do sensor." : "São os da página: o servidor ainda não informou os dele."}
+            <p className="small"><b>Limites de cada nível</b>Distância do sensor até a água, em centímetros.</p>
+            <div className="ps-limites">
+              {[["critico", "Crítico até"], ["alerta", "Alto até"], ["atencao", "Médio até"]].map(([nome, rotulo]) => (
+                <label key={nome} className="ps-limite">
+                  <span className="ps-rotulo">{rotulo}</span>
+                  <input className="ps-campo" type="text" inputMode="decimal" autoComplete="off" value={limitesDigitados[nome]}
+                    aria-invalid={limitesErrados} aria-describedby="ps-limites-ajuda" onChange={(e) => mudarLimite(nome, e.target.value)} />
+                </label>
+              ))}
+            </div>
+            <p className="micro" id="ps-limites-ajuda" role={limitesErrados ? "alert" : undefined}>
+              {limitesErrados
+                ? `Use números em ordem: o crítico acima de ${ALCANCE.minimo}, o alto acima do crítico e o médio acima do alto, até ${ALCANCE.maximo}. Enquanto isso, valem os limites anteriores (${limites.critico}, ${limites.alerta} e ${limites.atencao}).`
+                : `O sensor mede de ${ALCANCE.minimo} cm a ${ALCANCE.maximo} cm. Abaixo de ${ALCANCE.minimo} cm ele não mede com precisão, por isso o crítico começa acima disso. Acima do limite do médio, o nível é baixo.`}
             </p>
+            {limitesDoServidor && !mesmosLimites(limitesDoServidor, limites) ? (
+              <p className="micro">
+                O servidor do sensor usa outros limites (crítico até {limitesDoServidor.critico}, alerta até {limitesDoServidor.alerta}, atenção até {limitesDoServidor.atencao}):
+                o painel dele pode mostrar outro nível para a mesma medida.
+              </p>
+            ) : null}
+            {mesmosLimites(limites, LIMITES_PADRAO) && !limitesErrados ? null
+              : <button type="button" className="btn btn-line ps-desconectar" onClick={voltarAosLimitesPadrao}>Voltar aos limites padrão</button>}
           </div>
           <div className="plate ps-ajuste">
             <p className="small"><b>O que o servidor respondeu</b></p>
@@ -448,7 +485,9 @@ export default function Painel() {
 /**
  * Desenho do bueiro em corte: a rua em cima, a tampa, o poço, o sensor embaixo da tampa e a
  * água. A água sobe conforme a distância diminui; as três marcas na parede mostram onde começam
- * os níveis médio, alto e crítico. Sem medida, a água fica no fundo, apagada, e a régua some.
+ * os níveis médio, alto e crítico. A linha tracejada logo abaixo do sensor marca o mínimo que ele
+ * mede: dali para cima a medida não é confiável. Sem medida, a água fica no fundo, apagada, e a
+ * régua some.
  */
 function BueiroEmCorte({ distancia, nivel, limites, escala }) {
   const SENSOR = 62; // onde o sensor termina: dali para baixo ele mede
@@ -457,6 +496,7 @@ function BueiroEmCorte({ distancia, nivel, limites, escala }) {
   const topo = distancia === null ? FUNDO : yDe(distancia);
   const meio = Math.max((SENSOR + topo) / 2, SENSOR + 12);
   const marcas = [[4, limites.critico, "crítico"], [3, limites.alerta, "alto"], [2, limites.atencao, "médio"]];
+  const cega = limites.zonaCega > 0 ? yDe(limites.zonaCega) : null;
   const descricao = distancia === null
     ? "Desenho do bueiro em corte, com o sensor embaixo da tampa, sem medida"
     : `Desenho do bueiro em corte: a água está a ${textoDaDistancia(distancia)} do sensor, no nível ${rotuloNivel(nivel).toLowerCase()}`;
@@ -472,6 +512,13 @@ function BueiroEmCorte({ distancia, nivel, limites, escala }) {
       <g clipPath="url(#ps-poco)">
         <rect x="92" y="0" width="136" height="160" className="ps-agua" style={{ transform: `translateY(${topo}px)` }} />
       </g>
+      {/* O mínimo que o sensor mede: acima da linha tracejada, ele não mede com precisão */}
+      {cega === null ? null : (
+        <g className="ps-cega">
+          <path d={`M92 ${cega}h136`} />
+          {yDe(limites.critico) - cega >= 13 ? <text x="84" y={cega + 4} textAnchor="end" className="ps-letra">mín. {textoDaDistancia(limites.zonaCega)}</text> : null}
+        </g>
+      )}
       {/* Onde começa cada nível */}
       {marcas.map(([n, cm, nome], i) => (
         <g key={n} className={`ps-lim ps-lim-n${n}`}>

@@ -260,20 +260,32 @@ painel ────────▶ GET  /api/leitura   a última leitura (ou nul
 ```
 
 **Da distância ao nível** (`src/sensor/nivel.js`, com testes). Quanto menor a distância, mais
-cheio o bueiro. A regra e os limites são os do servidor do sensor; os nomes são os do mapa:
+cheio o bueiro. **O sensor mede de 20 cm a 2000 cm** (informado pelo grupo em 07/10/2026). Abaixo
+de 20 cm ele não mede com precisão (a "zona cega"), então o nível crítico começa acima disso: se
+começasse em 20, o sensor só chegaria nele já sem medir direito.
 
-| Distância até a água | Servidor do sensor | App |
-|---|---|---|
-| até 20 cm | Crítico | Crítico |
-| até 30 cm | Alerta | Alto |
-| até 45 cm | Atenção | Médio |
-| acima de 45 cm | Normal | Baixo |
+| Distância até a água | Nível no painel (os nomes do mapa) |
+|---|---|
+| até 30 cm | Crítico (abaixo de 20 cm, com o aviso de que o sensor já não mede com precisão) |
+| até 45 cm | Alto |
+| até 60 cm | Médio |
+| acima de 60 cm, até 2000 cm | Baixo |
 
-Os limites vêm de `GET /api/limites`; sem resposta, valem os da tabela. Três cuidados da tela:
+Os três limites são do painel e **podem ser trocados em "Ajustes do sensor"**, porque a montagem
+da bancada muda (a altura do sensor, a profundidade do recipiente). O que é digitado vale na
+hora e fica guardado no aparelho; o painel só aceita limites em ordem, com o crítico acima de
+20 cm e o médio até 2000 cm. O desenho mostra o mínimo do sensor com uma linha tracejada.
 
-- **Medida impossível não vira bueiro cheio.** Zero, negativo ou acima de 6 m é o que um sensor
-  de distância devolve quando não recebe o eco. A tela mostra "Leitura inválida" em vez de um
-  nível. (O servidor do sensor, em 06/10/2026, classifica `0` como Crítico.)
+O servidor do sensor tem os limites dele, de antes de o alcance ser conhecido (crítico 20,
+alerta 30, atenção 45, em `GET /api/limites`). O painel **não os usa** para dar o nível; em
+Ajustes, ele avisa quando são diferentes, porque o painel antigo do servidor pode mostrar outro
+nível para a mesma medida. Até 06/10 o painel seguia os limites do servidor.
+
+Três cuidados da tela:
+
+- **Medida impossível não vira bueiro cheio.** Zero, negativo ou acima de 2000 cm é o que um
+  sensor de distância devolve quando não recebe o eco. A tela mostra "Leitura inválida" em vez
+  de um nível. (O servidor do sensor, em 06/10/2026, classifica `0` como Crítico.)
 - **Mediana, quando há leituras de sobra.** A tela mostra a mediana das leituras válidas do
   último 1,5 s. Com o firmware de hoje, que envia a cada 2 s, isso é simplesmente a última
   leitura (sem atraso); a mediana só entra se o envio ficar mais rápido.
@@ -287,7 +299,8 @@ Os limites vêm de `GET /api/limites`; sem resposta, valem os da tabela. Três c
 - Sensor de distância por ultrassom (pinos de disparo e de eco). Mede cerca de 20 vezes por
   segundo e **envia uma leitura a cada 2 s**, com `device: "bueiro_01"`.
 - **Só envia leitura válida**: sem eco, ou fora de 2 a 450 cm, ele não envia nada. Por isso o `0`
-  que viraria Crítico no servidor não sai deste firmware.
+  que viraria Crítico no servidor não sai deste firmware. (Com o alcance de 2000 cm, o firmware
+  visto em 06/10 ainda descarta o que passa de 450 cm; na bancada isso não aparece.)
 - O nome e a senha do Wi-Fi e o **endereço do servidor ficam escritos no código**. Em outra rede,
   ou se o computador do servidor receber outro endereço, a placa precisa ser gravada de novo.
 - Um LED na placa pisca mais rápido conforme a água chega perto (limites próprios: 25 e 45 cm,
@@ -318,14 +331,14 @@ embutidos (modo `painel` do `vite.config.js`), e `ferramentas/painel-unico.mjs` 
 e o CSS para dentro do HTML. O resultado (`dist-painel/sima-sensor.html`, cerca de 430 KB) não
 depende de mais nenhum arquivo. A página descobre sozinha que está dentro do servidor do sensor:
 ao abrir, pergunta `GET /api/limites` ao próprio endereço; se a resposta for a dos limites, usa
-esse endereço e conecta sem botão.
+esse endereço e conecta sem botão. (A resposta serve só para reconhecer o servidor.)
 
 **Simulação.** "Simular sem o sensor" põe um controle embaixo do desenho: arrastando, a água
-sobe e o nível muda. A página avisa que é simulação. É a reserva se o Wi-Fi ou o protótipo
+sobe e o nível muda, até 10 cm do sensor (dentro da zona cega, para dar para mostrá-la). A página avisa que é simulação. É a reserva se o Wi-Fi ou o protótipo
 falharem.
 
 **Ajustes do sensor** (botão no pé da página) mostra o endereço do servidor e o botão de
-desconectar, os limites em uso (e se vieram do servidor) e a última resposta crua do servidor.
+desconectar, os três limites de cada nível (para trocar) e a última resposta crua do servidor.
 
 **O que foi conferido e o que não foi.** Conferido com uma cópia do servidor do grupo e leituras
 enviadas como o ESP32 enviaria: os quatro níveis, a leitura inválida, o sensor parado, o servidor
