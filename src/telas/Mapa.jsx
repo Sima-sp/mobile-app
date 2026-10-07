@@ -276,7 +276,7 @@ function SeletorDeClima({ demo }) {
 /**
  * Cartão que sobe ao tocar num bueiro, no padrão dos apps de mapa: nome e situação em cima, uma
  * faixa com os três números que importam e os botões de ação embaixo.
- * Na faixa, água e lixo são MEDIDOS pelo sensor; a chance de alagar é PREVISTA pela IA.
+ * Na faixa, a água é MEDIDA pelo sensor; a chance de alagar é PREVISTA pela IA.
  * O botão azul é a ação principal e depende do bueiro: num ponto em risco (alto, crítico ou
  * transbordando) é "Desviar", que leva às rotas; nos demais é "Ver detalhes".
  */

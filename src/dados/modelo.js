@@ -22,7 +22,8 @@
 //   simulada              true = chuva de demonstração ligada no backend
 //   origem                "MODELO" | "REGRAS" | "INDISPONIVEL" | null
 //   modeloVersao          versão do modelo de IA que gerou a previsão, ex.: "v1"
-//   agua, lixo            leitura do sensor em %, ou null
+//   agua                  nível da água lido pelo sensor, em %, ou null
+//                         (o sensor do SIMA mede só a água; o lixo saiu do projeto em 06/10/2026)
 //   leituraEm             Date ou null
 //   chuvaRecente3h, chuvaPrevista3h   mm, ou null
 //   historicoAgua         lista de % das últimas 12 h (opcional)
@@ -85,7 +86,8 @@ export function codigoDoPonto(bairro, id) {
  *   origem, modeloVersao, simulada.
  *
  * Campos que AINDA NÃO vêm e que a tela sabe mostrar assim que vierem (nomes sugeridos):
- *   statusSensor ("ATIVO" | "INATIVO" | "MANUTENCAO"), nivelAgua, porcentagemLixo, dataLeitura.
+ *   statusSensor ("ATIVO" | "INATIVO" | "MANUTENCAO"), nivelAgua, dataLeitura.
+ *   (Se o backend mandar porcentagemLixo, o app ignora: o sensor não mede lixo.)
  *   Sem eles o app mostra "Sem leitura" e não distingue sensor inativo de sensor em manutenção.
  *
  * Devolve null quando o item não tem id ou posição: sem isso não há o que pôr no mapa.
@@ -122,7 +124,6 @@ export function normalizarPrevisao(item) {
     origem: item.origem ?? null,
     modeloVersao: item.modeloVersao ?? null,
     agua: numero(item.nivelAgua),
-    lixo: numero(item.porcentagemLixo),
     leituraEm: lerData(item.dataLeitura),
     chuvaRecente3h: numero(item.chuvaRecente3hMm),
     chuvaPrevista3h: numero(item.chuvaPrevista3hMm),
@@ -224,14 +225,13 @@ export function resumoPrevisao(ponto, agora = new Date()) {
 }
 
 /**
- * Os três números do cartão do bueiro, lado a lado: dois MEDIDOS pelo sensor (água e lixo) e um
- * PREVISTO pela IA (chance de alagar na janela). Com o bueiro transbordando, o terceiro deixa de
+ * Os dois números do cartão do bueiro, lado a lado: um MEDIDO pelo sensor (o nível da água) e um
+ * PREVISTO pela IA (chance de alagar na janela). Com o bueiro transbordando, o segundo deixa de
  * ser previsão e diz "Agora". Quando falta o dado o valor vem como "—", e a
  * `descricao` (lida pelo leitor de tela) diz o motivo por extenso.
  */
 export function fatosDoCartao(ponto, agora = new Date()) {
   const semSensor = ponto.statusSensor === "INATIVO" || ponto.agua === null || ponto.semLeituraSensor;
-  const temLixo = !semSensor && ponto.lixo !== null && ponto.lixo !== undefined;
   const status = statusAgora(ponto, agora);
   const janela = ponto.janelaHoras ?? CONFIG.janelaHorasPadrao;
   const chance = status === "VALIDA" ? textoProbabilidade(ponto.probabilidade) : null;
@@ -250,10 +250,8 @@ export function fatosDoCartao(ponto, agora = new Date()) {
   }
 
   return [
-    { id: "agua", rotulo: "Água", valor: semSensor ? "—" : porcento(ponto.agua),
+    { id: "agua", rotulo: "Água no bueiro", valor: semSensor ? "—" : porcento(ponto.agua),
       descricao: semSensor ? "Água: sem leitura do sensor" : `Água em ${porcento(ponto.agua)} da capacidade, medida pelo sensor` },
-    { id: "lixo", rotulo: "Lixo", valor: temLixo ? porcento(ponto.lixo) : "—",
-      descricao: temLixo ? `Lixo em ${porcento(ponto.lixo)}, medido pelo sensor` : "Lixo: sem leitura do sensor" },
     { id: "previsto", ...previsto },
   ];
 }
@@ -265,8 +263,7 @@ export function resumoLeitura(ponto, agora = new Date()) {
     const motivo = ponto.statusSensor === "MANUTENCAO" ? "Sensor em manutenção" : "Sensor sem leitura recente";
     return { tipo: "sem-leitura", titulo: "Sem leitura", detalhe: motivo };
   }
-  const lixo = ponto.lixo === null ? "Lixo não medido" : `Lixo em ${porcento(ponto.lixo)}`;
-  return { tipo: "leitura", titulo: `${porcento(ponto.agua)} de água`, detalhe: lixo, quando: haQuanto(ponto.leituraEm, agora) };
+  return { tipo: "leitura", titulo: `${porcento(ponto.agua)} de água`, detalhe: "Medido pelo sensor", quando: haQuanto(ponto.leituraEm, agora) };
 }
 
 /**

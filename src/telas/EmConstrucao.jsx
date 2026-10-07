@@ -53,7 +53,7 @@ export function Sobre() {
         <div className="plate ec-card">
           <h2 className="label" style={{ color: "var(--bone-50)", fontSize: 15 }}>Como ler o mapa</h2>
           <ul className="ec-lista">
-            <li><b>Medido</b> é o que o sensor leu no bueiro: nível da água e lixo acumulado, com a hora da leitura.</li>
+            <li><b>Medido</b> é o que o sensor leu no bueiro: o nível da água, com a hora da leitura.</li>
             <li><b>Previsto</b> é a estimativa da inteligência artificial a partir da chuva e dessas leituras. É uma chance, não uma certeza.</li>
             <li>A tampa enche conforme o risco: baixo, médio, alto e crítico.</li>
             <li>Quando um bueiro está em nível alto ou crítico, a <b>rua em volta dele</b> fica pintada da mesma cor, por cerca de 300 m para cada lado. É onde o risco está, não a mancha exata de um alagamento.</li>

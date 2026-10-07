@@ -86,10 +86,10 @@ test("normalizarPrevisao: vizinhança com travessão vira endereço e bairro", (
 });
 
 test("normalizarPrevisao: leitura e status do sensor aparecem quando o backend mandar", () => {
-  const p = normalizarPrevisao({ ...ITEM_REAL, semLeituraSensor: false, statusSensor: "ATIVO", nivelAgua: 82, porcentagemLixo: 64,
+  const p = normalizarPrevisao({ ...ITEM_REAL, semLeituraSensor: false, statusSensor: "ATIVO", nivelAgua: 82, porcentagemLixo: 64, // o backend ainda pode mandar o lixo; o app ignora
     dataLeitura: "2026-10-06T13:15:00", nivelRisco: "MEDIO", ajusteSensorAplicado: true });
   assert.equal(p.agua, 82);
-  assert.equal(p.lixo, 64);
+  assert.equal("lixo" in p, false, "o app ignora o lixo: o sensor mede só a água");
   assert.equal(p.nivel, 2);
   assert.equal(p.nivelModelo, 1);
   assert.equal(p.ajusteSensorAplicado, true);
@@ -129,28 +129,28 @@ test("resumo da previsão: medição de transbordo esconde a porcentagem", () =>
 });
 
 test("resumo da leitura e linha de situação", () => {
-  const ponto = { nivel: 3, status: "VALIDA", validaAte: emMinutos(20), statusSensor: "ATIVO", agua: 71, lixo: 58, leituraEm: emMinutos(-3), codigo: "VG-01" };
+  const ponto = { nivel: 3, status: "VALIDA", validaAte: emMinutos(20), statusSensor: "ATIVO", agua: 71, leituraEm: emMinutos(-3), codigo: "VG-01" };
   assert.equal(resumoLeitura(ponto, AGORA).titulo, "71% de água");
   assert.equal(linhaSituacao(ponto, AGORA), "Alto · leitura há 3 min");
   assert.equal(resumoLeitura({ ...ponto, agua: null, statusSensor: "MANUTENCAO" }, AGORA).detalhe, "Sensor em manutenção");
   assert.equal(haQuanto(emMinutos(-125), AGORA), "há 2 h");
 });
 
-test("cartão do bueiro: três números, com traço quando falta o dado", () => {
-  const ponto = { nivel: 3, status: "VALIDA", validaAte: emMinutos(20), statusSensor: "ATIVO", agua: 71, lixo: 58, probabilidade: 0.034, janelaHoras: 3 };
+test("cartão do bueiro: dois números (água medida e chance prevista), com traço quando falta o dado", () => {
+  const ponto = { nivel: 3, status: "VALIDA", validaAte: emMinutos(20), statusSensor: "ATIVO", agua: 71, probabilidade: 0.034, janelaHoras: 3 };
   const valores = (p) => fatosDoCartao(p, AGORA).map((f) => `${f.rotulo}: ${f.valor}`);
-  assert.deepEqual(valores(ponto), ["Água: 71%", "Lixo: 58%", "Chance em 3 h: 3,4%"]);
+  assert.deepEqual(valores(ponto), ["Água no bueiro: 71%", "Chance em 3 h: 3,4%"]);
   // Probabilidade muito pequena cabe na coluna.
-  assert.equal(fatosDoCartao({ ...ponto, probabilidade: 0.0004 }, AGORA)[2].valor, "< 0,1%");
-  // Sem leitura do sensor: água e lixo viram traço, a previsão continua.
-  assert.deepEqual(valores({ ...ponto, agua: null, lixo: null, semLeituraSensor: true }), ["Água: —", "Lixo: —", "Chance em 3 h: 3,4%"]);
+  assert.equal(fatosDoCartao({ ...ponto, probabilidade: 0.0004 }, AGORA)[1].valor, "< 0,1%");
+  // Sem leitura do sensor: a água vira traço, a previsão continua.
+  assert.deepEqual(valores({ ...ponto, agua: null, semLeituraSensor: true }), ["Água no bueiro: —", "Chance em 3 h: 3,4%"]);
   assert.equal(fatosDoCartao({ ...ponto, statusSensor: "INATIVO" }, AGORA)[0].descricao, "Água: sem leitura do sensor");
   // Sem a IA (regras) mostra o nível; previsão vencida ou ausente vira traço.
-  assert.equal(valores({ ...ponto, probabilidade: null })[2], "Risco em 3 h: Alto");
-  assert.equal(valores({ ...ponto, validaAte: emMinutos(-1) })[2], "Chance em 3 h: —");
-  assert.equal(valores({ ...ponto, nivel: null, status: "SEM_PREVISAO" })[2], "Chance em 3 h: —");
+  assert.equal(valores({ ...ponto, probabilidade: null })[1], "Risco em 3 h: Alto");
+  assert.equal(valores({ ...ponto, validaAte: emMinutos(-1) })[1], "Chance em 3 h: —");
+  assert.equal(valores({ ...ponto, nivel: null, status: "SEM_PREVISAO" })[1], "Chance em 3 h: —");
   // Bueiro cheio é medição: no lugar da chance, "agora".
-  assert.equal(valores({ ...ponto, agua: 100, nivel: 4, medicaoTransbordando: true })[2], "Transbordando: Agora");
+  assert.equal(valores({ ...ponto, agua: 100, nivel: 4, medicaoTransbordando: true })[1], "Transbordando: Agora");
 });
 
 test("bairros: contagem por nível e ordem do pior para o mais tranquilo", () => {

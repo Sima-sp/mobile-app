@@ -1,6 +1,6 @@
 // Tela "Como a IA funciona": mostra a inteligência artificial do SIMA em funcionamento, sem
 // termos técnicos. Tem três partes:
-//   1. um SIMULADOR: a pessoa muda a chuva, o lugar e as leituras do sensor e vê a resposta
+//   1. um SIMULADOR: a pessoa muda a chuva, o lugar e a leitura do sensor (água) e vê a resposta
 //      (chance, nível e o porquê) mudar na hora. A IA junta as três coisas: a leitura do sensor
 //      entra na conta da chance, não é só uma medição mostrada ao lado;
 //   2. o caminho de uma previsão, em cinco passos;
@@ -27,11 +27,11 @@ const PASSOS = [
   { titulo: "Ela aprendeu com o passado",
     texto: "Estudou 12.621 alagamentos registrados em São Paulo desde 2011 e a chuva de cada hora. Assim aprendeu em que condições cada lugar costuma alagar." },
   { titulo: "A cada 10 minutos ela olha de novo",
-    texto: "Recebe a chuva das últimas horas em cada ponto, o histórico do lugar e a última leitura do sensor do bueiro: água e lixo." },
+    texto: "Recebe a chuva das últimas horas em cada ponto, o histórico do lugar e a última leitura do sensor: o nível da água no bueiro." },
   { titulo: "Calcula a chance pela chuva e pelo lugar",
     texto: "É a chance de alagar nas próximas 3 horas. Alagamento é raro, então os números são pequenos: 1% já é muito acima do normal." },
   { titulo: "O sensor entra na conta",
-    texto: "Bueiro enchendo ou com muito lixo multiplica essa chance: é o sinal de que ali a água já não escoa. Bueiro cheio vira “Transbordando agora”, que é medição, não previsão." },
+    texto: "Bueiro enchendo multiplica essa chance: é o sinal de que ali a água já não escoa. Bueiro cheio vira “Transbordando agora”, que é medição, não previsão." },
   { titulo: "A chance vira um nível", niveis: true,
     texto: `Médio a partir de ${LIMIARES_EM_TEXTO[2]}, alto a partir de ${LIMIARES_EM_TEXTO[3]} e crítico a partir de ${LIMIARES_EM_TEXTO[4]}. É o nível que aparece na tampa.` },
 ];
@@ -48,7 +48,7 @@ export default function ComoFunciona() {
     if (!ponto || !lugar) {
       // Sem bueiro: começa numa chuva forte num lugar que alaga às vezes, no meio da escala.
       const forte = CENARIOS.find((c) => c.id === "forte");
-      return { lugares: LUGARES_DO_SIMULADOR, lugar: LUGARES_DO_SIMULADOR[1].id, chuva: Math.round(forte.chuva * 100), agua: forte.agua, lixo: forte.lixo };
+      return { lugares: LUGARES_DO_SIMULADOR, lugar: LUGARES_DO_SIMULADOR[1].id, chuva: Math.round(forte.chuva * 100), agua: forte.agua };
     }
     return {
       lugares: [{ ...lugar, rotulo: `Bueiro ${ponto.codigo}` }, ...LUGARES_DO_SIMULADOR.filter((l) => l.id !== lugar.id)],
@@ -56,7 +56,6 @@ export default function ComoFunciona() {
       // Sem arredondar: a resposta inicial bate com a previsão que a tela do bueiro mostra.
       chuva: forcaDaChuva(ponto.chuvaRecente3h ?? 0) * 100,
       agua: Math.round(ponto.agua ?? 30),
-      lixo: Math.round(ponto.lixo ?? 20),
     };
     // Só na abertura: depois disso quem manda nos controles é a pessoa.
   }, []);
@@ -64,10 +63,9 @@ export default function ComoFunciona() {
   const [idLugar, setIdLugar] = useState(inicio.lugar);
   const [chuva, setChuva] = useState(inicio.chuva);
   const [agua, setAgua] = useState(inicio.agua);
-  const [lixo, setLixo] = useState(inicio.lixo);
 
   const lugar = inicio.lugares.find((l) => l.id === idLugar) ?? inicio.lugares[0];
-  const resposta = responder({ chuva: chuva / 100, agua, lixo }, lugar);
+  const resposta = responder({ chuva: chuva / 100, agua }, lugar);
   const cor = corNivel(resposta.nivel);
   // "< 0,1%" no lugar de "menos de 0,1%": a linha da chance não quebra em duas.
   const chance = textoProbabilidade(resposta.probabilidade).replace("menos de ", "< ");
@@ -75,9 +73,8 @@ export default function ComoFunciona() {
   const aplicar = (cenario) => {
     setChuva(Math.round(cenario.chuva * 100));
     setAgua(cenario.agua);
-    setLixo(cenario.lixo);
   };
-  const cenarioAtivo = CENARIOS.find((c) => Math.round(c.chuva * 100) === chuva && c.agua === agua && c.lixo === lixo)?.id;
+  const cenarioAtivo = CENARIOS.find((c) => Math.round(c.chuva * 100) === Math.round(chuva) && c.agua === agua)?.id;
   const passo = (id) => resposta.passos.find((p) => p.id === id);
 
   return (
@@ -85,7 +82,7 @@ export default function ComoFunciona() {
       <CabecalhoTela titulo="Como a IA funciona" />
       <p className="sub ia-intro">
         A inteligência artificial do SIMA junta três coisas para estimar a chance de cada bueiro alagar nas próximas 3 horas:
-        a chuva, o histórico do lugar e o que o sensor mede. Mude cada uma e veja a resposta.
+        a chuva, o histórico do lugar e a água que o sensor mede no bueiro. Mude cada uma e veja a resposta.
       </p>
 
       {/* A resposta fica presa no alto enquanto a pessoa mexe nos controles. */}
@@ -132,7 +129,6 @@ export default function ComoFunciona() {
       <h2 className="grp-t">O sensor do bueiro</h2>
       <div className="grp ia-grupo">
         <Faixa id="ia-agua" rotulo="Água no bueiro" valor={agua} aoMudar={setAgua} texto={passo("agua").titulo} nota={passo("agua").texto} efeito={passo("agua").efeito} marca={50} />
-        <Faixa id="ia-lixo" rotulo="Lixo no bueiro" valor={lixo} aoMudar={setLixo} texto={passo("lixo").titulo} nota={passo("lixo").texto} efeito={passo("lixo").efeito} marca={30} />
       </div>
       <p className="micro ia-rodape">
         O simulador é uma versão simplificada, feita para explicar. No servidor do SIMA, quem calcula a chance pela chuva e pelo lugar é um modelo treinado com os registros.

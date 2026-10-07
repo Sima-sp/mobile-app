@@ -47,9 +47,9 @@ O aviso "Demonstração" fica sempre na tela. O que é real e o que é inventado
 | Clima | O que aparece | Aviso por região |
 |---|---|---|
 | Sol | Tudo em nível baixo | Nenhum |
-| Chuvisco | Maioria em baixo; os bueiros com muito lixo vão para médio | Nenhum |
-| Chuva forte | De tudo um pouco, com alguns críticos; ruas pintadas em volta dos altos e críticos | 11 regiões em risco alto e 1 em atenção |
-| Chuva extrema | Maioria em alto ou crítico; cerca de 15 bueiros transbordando | As 15 regiões com cobertura em risco alto |
+| Chuvisco | Tudo em baixo; a água sobe um pouco nos bueiros | Nenhum |
+| Chuva forte | De tudo um pouco, com alguns críticos; ruas pintadas em volta dos altos e críticos | 7 regiões em risco alto e 5 em atenção |
+| Chuva extrema | Maioria em alto ou crítico; cerca de 17 bueiros transbordando | As 15 regiões com cobertura em risco alto |
 
 Na primeira abertura o app mostra uma **apresentação de quatro passos** (ver "Primeiro uso"). Para
 quem apresenta: ela pode ser revista em Menu → "Rever a apresentação".
@@ -151,9 +151,10 @@ No SIMA o sensor não é só um medidor: a leitura dele **entra na conta da chan
 demonstração e no simulador (`src/dados/demo.js`):
 
 1. A chuva e o lugar dão uma primeira chance de alagar nas próximas 3 horas (`previsaoPelaChuva`).
-2. A leitura do bueiro multiplica essa chance (`chanceComSensor`):
-   - **água:** até a metade não muda nada; 2 vezes em 65 %, 6 vezes em 80 %, 12 vezes quase cheio;
-   - **lixo:** só pesa com chuva; a partir de 30 %, 3 vezes em 60 % e 5 vezes com o bueiro tomado.
+2. A leitura do bueiro, que é o **nível da água**, multiplica essa chance (`chanceComSensor`):
+   até a metade não muda nada; 2,5 vezes em 65 %, 7 vezes em 80 %, 12 vezes quase cheio. A conta
+   é feita em "chances contra e a favor" (odds): com chance pequena o resultado é esse mesmo
+   múltiplo; perto de 100 % o efeito é menor, e as telas dizem o crescimento real.
 3. O nível sai da chance final, pelos limiares do modelo. Água em 100 % é "transbordando agora":
    crítico, e aí é medição, não previsão.
 
@@ -168,11 +169,53 @@ resolveria: elas são geradas por esta mesma regra, então o modelo só aprender
 foi inventado. O caminho é acumular leituras de verdade e, com elas, trocar a regra por
 aprendizado; é o ponto de `chanceComSensor`.
 
+**O sensor mede só a água.** Até 06/10/2026 o app também mostrava "lixo acumulado" e usava o
+lixo na conta. Saiu: o sensor do projeto detecta água, não lixo. O backend e o `ml-service` ainda
+têm o campo `porcentagemLixo`; se ele vier em `/previsoes`, o app ignora.
+
+**O protótipo detecta molhado ou seco, não o nível.** O ESP32 que o grupo tem hoje avisa quando a
+água chega até ele (ver "Sensor ao vivo"); não informa "71 % cheio". A demonstração e o simulador
+continuam com o nível em %, que é o que o sistema completo prevê medir. Enquanto o sensor for
+só molhado/seco, a leitura real equivale a dois pontos dessa escala: vazio ou cheio.
+
 **Diferença para o serviço de IA de hoje.** No `ml-service` v1 o modelo calcula a chance só com
-a chuva e o lugar, e a leitura do sensor sobe o **nível** por regra (água ≥ 80 % ou lixo ≥ 60 %
+a chuva e o lugar, e a leitura do sensor sobe o **nível** por regra (água ≥ 80 %, e lixo ≥ 60 %
 com chuva), sem mexer na porcentagem. Com o app ligado ao backend, o que aparece é isso. Para o
 sistema de verdade se comportar como a demonstração, a mesma conta precisa entrar no `ml-service`
-(e o backend mandar a chance já com o sensor).
+(e o backend mandar a chance já com o sensor), e a regra do lixo precisa sair de lá.
+
+## Sensor ao vivo
+
+`/sensor` (Menu → "Sensor ao vivo") mostra o **protótipo do sensor** funcionando: o ESP32 fica
+ligado por cabo USB ao computador e a tela mostra, em tempo real, se ele está **seco** ou
+**molhado**, num desenho do bueiro em corte, e como o bueiro apareceria no mapa.
+
+**Para usar na bancada:**
+
+1. Abra o app no **Chrome ou no Edge, no computador**. Firefox e Safari não têm a porta serial;
+   no celular, use a simulação da própria tela.
+2. Feche o Monitor Serial do Arduino: só um programa usa a porta de cada vez.
+3. Ligue o ESP32 no cabo, toque em "Conectar o sensor" e escolha a porta na janela do navegador
+   (costuma ser `ttyUSB0`, `ttyACM0` ou `COM3`). Nas próximas vezes a tela conecta sozinha.
+4. Se não chegar nada: em "Ajustes do sensor", confira a velocidade (a do `Serial.begin(...)` no
+   código do ESP32; o padrão da tela é 115200).
+5. **No Linux**, o usuário precisa estar no grupo `dialout`
+   (`sudo usermod -aG dialout $USER` e entrar de novo na sessão).
+
+**O que o ESP32 precisa escrever.** Uma linha por leitura. A tela aceita os formatos mais comuns
+(`src/sensor/interpretar.js`, com testes): `molhado` / `seco`, `AGUA DETECTADA` / `sem agua`,
+`1` / `0`, `agua: 1`, `umidade=1830`, `{"molhado": true}`... As mensagens de inicialização do
+ESP32 são ignoradas. Em "Ajustes do sensor" aparece o texto cru que chegou, para conferir.
+
+**Calibragem.** Se o sensor mandar um número que não seja 0 ou 1 (o valor bruto da leitura), a
+tela pede para marcar "agora está seco" e "agora está molhado"; daí em diante vale a referência
+mais próxima. Serve também para sensores em que 0 quer dizer molhado. Fica guardada no aparelho.
+
+**Simulação.** "Simular sem o sensor" troca o estado à mão e avisa na tela que é simulação. É a
+reserva para o caso de o cabo falhar.
+
+**O que a tela não faz.** A leitura não vai para o servidor nem vira um bueiro do mapa: fica só
+nesta tela. O passo seguinte é o ESP32 enviar a leitura ao backend (`POST /api/leituras`).
 
 ## Ruas afetadas
 
@@ -224,10 +267,10 @@ o aviso da região (quando se preparar).
 `/ia` mostra a IA em funcionamento, sem termos técnicos:
 
 1. **Simulador.** A pessoa muda a chuva, o lugar (três lugares reais: um que alaga pouco, um às
-   vezes e o que mais alaga) e as leituras do sensor (água e lixo). A resposta fica presa no alto
+   vezes e o que mais alaga) e a leitura do sensor (o nível da água). A resposta fica presa no alto
    da tela e muda na hora: nível, chance e uma frase que mostra o quanto o sensor pesou ("só pela
-   chuva e pelo lugar seria 0,3 %; com o que o sensor mede, fica 25 vezes maior"). Há atalhos
-   prontos ("Dia seco", "Temporal", "Bueiro entupido"...).
+   chuva e pelo lugar seria 0,3 %; com o que o sensor mede, fica 8,6 vezes maior"). Há atalhos
+   prontos ("Dia seco", "Temporal", "Bueiro enchendo"...).
 2. **O caminho de uma previsão**, em cinco passos.
 3. **Quanto ela acerta**, com os números dos testes do modelo v1, o que ainda é regra (o peso do
    sensor) e o que ela não vê.
@@ -270,7 +313,7 @@ fica para o que significa algo**. No SIMA: cinza é a rua, azul é a água e a a
   entra: de longe só expressas e avenidas; as ruas de bairro surgem ao aproximar. Córregos e rios
   ficam bem visíveis de propósito.
 - O **cartão do bueiro** segue o padrão dos cartões de lugar desses apps: nome e situação, uma
-  faixa com três números (água e lixo, medidos; chance de alagar, prevista) e os botões. O botão
+  faixa com dois números (água no bueiro, medida; chance de alagar, prevista) e os botões. O botão
   azul é a ação principal: "Desviar" quando o bueiro está em risco (alto, crítico ou transbordando)
   e "Ver detalhes" nos demais.
 - A landing (`landing/`) continua com a paleta azulada anterior. Os nomes dos tokens são os mesmos,
@@ -312,7 +355,7 @@ O que **falta no backend** para o app mostrar tudo:
 
 | Campo (nome sugerido) | Para quê | Sem ele |
 |---|---|---|
-| `nivelAgua`, `porcentagemLixo`, `dataLeitura` | O lado "medido" do bueiro | O app mostra "Sem leitura" em todos os pontos |
+| `nivelAgua`, `dataLeitura` | O lado "medido" do bueiro | O app mostra "Sem leitura" em todos os pontos |
 | `statusSensor` (`ATIVO`, `INATIVO`, `MANUTENCAO`) | Dizer por que não há leitura | O app não distingue sensor inativo de sensor em manutenção |
 | Fuso nas datas (ex.: `2026-10-06T13:18:18-03:00`) | Aparelhos fora do horário de São Paulo | O app assume São Paulo quando a data vem sem fuso |
 
@@ -353,6 +396,9 @@ src/
     bairros.js             resumo por bairro
     regioes.js             aviso por região: cobertura mínima, limiares e as frases
     simulador.js           simulador da tela da IA: lugares, cenários e explicações
+  sensor/
+    interpretar.js         entende o que o ESP32 escreve pelo cabo: molhado, seco ou um número (e o teste)
+    serial.js              abre a porta USB pelo navegador (Web Serial) e entrega linha por linha
     PontosContexto.jsx     guarda os pontos e atualiza sozinho (usePontos)
     modelo.test.js         testes das regras acima
     demo.test.js           testes da demonstração
@@ -388,6 +434,7 @@ src/
     Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
     Avisos.jsx             avisos por região
     ComoFunciona.jsx       como a IA funciona, com o simulador
+    Sensor.jsx             sensor ao vivo: o protótipo (ESP32) pelo cabo USB
     Menu.jsx               atalhos, tema e ajustes
     EmConstrucao.jsx       telas das próximas etapas e a tela Sobre
   estilos/
@@ -400,12 +447,12 @@ ferramentas/
 
 Endereços: `/` mapa · `/?ponto=ID` mapa com o cartão aberto · `/bueiro/ID` · `/bairros?b=Nome`
 · `/busca` · `/rotas` escolher partida e destino · `/rota` mapa com a rota desenhada · `/alertas` avisos por
-região · `/ia` como a IA funciona (`/ia?ponto=ID` com um bueiro) · `/menu` · `/sobre`. O endereço usa `#` (HashRouter) para o app funcionar em qualquer
+região · `/ia` como a IA funciona (`/ia?ponto=ID` com um bueiro) · `/sensor` sensor ao vivo · `/menu` · `/sobre`. O endereço usa `#` (HashRouter) para o app funcionar em qualquer
 hospedagem estática sem configurar o servidor.
 
 ## Decisões que valem lembrar
 
-- **Medido separado de previsto.** Água, lixo e hora da leitura vêm do sensor; nível de risco e
+- **Medido separado de previsto.** O nível da água e a hora da leitura vêm do sensor; nível de risco e
   chance vêm da IA. Quando o sensor mede o bueiro cheio (`medicaoTransbordando`), a tela diz
   "Transbordando agora (medido)" e **não** mostra porcentagem.
 - **O nível é a informação principal; a porcentagem é secundária.** As probabilidades do modelo
@@ -423,8 +470,8 @@ hospedagem estática sem configurar o servidor.
 - **Aviso por região calculado no app.** A regra é a do serviço de IA; a origem dos dados troca
   quando o formato de `/previsoes/regioes` for conferido (ver "Aviso por região").
 - **O sensor entra na chance.** Decisão do Guilherme em 06/10/2026: o sensor foi escolhido para
-  ajudar a previsão, não só para medir. Na demonstração e no simulador, água e lixo multiplicam a
-  chance, e o nível sai dela. Isso muda a recomendação R5 do serviço de IA (lá o sensor mexe só no
+  ajudar a previsão, não só para medir. Na demonstração e no simulador, o nível da água multiplica
+  a chance, e o nível de risco sai dela. Isso muda a recomendação R5 do serviço de IA (lá o sensor mexe só no
   nível); ver "O sensor na previsão".
 - **Tela larga.** A partir de 900 px as telas viram uma coluna à esquerda e o mapa continua
   visível — é o que permite usar o mesmo app como "mapa web" da landing.
@@ -453,7 +500,8 @@ hospedagem estática sem configurar o servidor.
 | Trecho de rua para sensores fora dos pontos conhecidos | Rodar `npm run ruas` com a posição dos sensores |
 | Chance com o sensor também nos dados reais | A conta de "O sensor na previsão" no `ml-service`, e o backend mandando a chance antes e depois do sensor |
 | A IA aprender o peso do sensor | Meses de leituras de verdade, com registro de quando alagou |
-| Leitura do sensor com dados reais | `nivelAgua`, `porcentagemLixo`, `dataLeitura` e `statusSensor` em `/previsoes` |
+| Leitura do sensor com dados reais | `nivelAgua`, `dataLeitura` e `statusSensor` em `/previsoes` |
+| Protótipo do sensor no mapa (hoje só na tela "Sensor ao vivo") | O ESP32 enviar a leitura ao backend, e o backend devolvê-la em `/previsoes` |
 | Gráfico de 12 h com dados reais | Histórico de leituras por sensor (hoje só na demonstração) |
 | App nas lojas (APK) | Capacitor |
 

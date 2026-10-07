@@ -73,7 +73,6 @@ function DesenhoMedidoPrevisto() {
   return (
     <div className="pu-fatos">
       <div><span className="pu-etiqueta">Medido</span><b>Água 71%</b><span>pelo sensor</span></div>
-      <div><span className="pu-etiqueta">Medido</span><b>Lixo 34%</b><span>pelo sensor</span></div>
       <div><span className="pu-etiqueta pu-etiqueta-ia">Previsto</span><b>Chance 2,4%</b><span>pela IA, em 3 h</span></div>
     </div>
   );
@@ -101,7 +100,7 @@ const PASSO_NIVEIS = {
 };
 const PASSO_MEDIDO = {
   id: "medido", titulo: "Medido pelo sensor, previsto pela IA", desenho: <DesenhoMedidoPrevisto />,
-  texto: "Toque numa tampa. Água e lixo são leituras do sensor. Com elas, a chuva e o histórico do lugar, a IA estima a chance de alagar: um risco, não uma certeza.",
+  texto: "Toque numa tampa. O nível da água é leitura do sensor. Com ele, a chuva e o histórico do lugar, a IA estima a chance de alagar: um risco, não uma certeza.",
 };
 const PASSO_CLIMA = {
   id: "clima", titulo: "Faça chover", desenho: <DesenhoClima />,

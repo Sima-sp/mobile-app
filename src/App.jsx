@@ -18,6 +18,7 @@ import Menu from "./telas/Menu";
 import Rotas from "./telas/Rotas";
 import Avisos from "./telas/Avisos";
 import ComoFunciona from "./telas/ComoFunciona";
+import Sensor from "./telas/Sensor";
 import { EmConstrucao, Sobre } from "./telas/EmConstrucao";
 import { PrimeiroUso, ProvedorApresentacao } from "./componentes/PrimeiroUso";
 
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/reportar" element={<EmConstrucao tela="reportar" />} />
               <Route path="/alertas" element={<Avisos />} />
               <Route path="/ia" element={<ComoFunciona />} />
+              <Route path="/sensor" element={<Sensor />} />
               <Route path="/perfil" element={<EmConstrucao tela="perfil" />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

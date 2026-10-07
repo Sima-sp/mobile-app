@@ -8,7 +8,8 @@ import { horaCurta } from "../dados/modelo";
 import { useApresentacao } from "../componentes/PrimeiroUso";
 import { BotaoVoltar, Tela } from "../componentes/Tela";
 import {
-  IconeBairros, IconeFaisca, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRepetir, IconeRota, IconeSeta, IconeSino, IconeSol,
+  IconeBairros, IconeFaisca, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRepetir, IconeRota, IconeSensor, IconeSeta, IconeSino,
+  IconeSol,
 } from "../componentes/Icones";
 
 const VERSAO = "0.1";
@@ -57,6 +58,7 @@ export default function Menu() {
       <h2 className="grp-t">Entender</h2>
       <div className="grp">
         {atalho("Como a IA funciona", "/ia", <IconeFaisca pequeno />)}
+        {atalho("Sensor ao vivo", "/sensor", <IconeSensor pequeno />)}
         <button type="button" className="row" onClick={() => { apresentacao.abrir(); navegar("/"); }}>
           <span className="row-ic" aria-hidden="true"><IconeRepetir pequeno /></span>
           <span className="row-k">Rever a apresentação</span>

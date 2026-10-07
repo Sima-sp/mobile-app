@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  CLIMAS, LIMIARES, PONTOS_BASE, chanceComSensor, criarEstadoDemo, emTransicao, fatorDaAgua, fatorDoLixo, gerarPontosDemo, intensidades,
+  CLIMAS, LIMIARES, PONTOS_BASE, chanceComSensor, criarEstadoDemo, emTransicao, fatorDaAgua, gerarPontosDemo, intensidades,
   situacaoDoPonto, trocarClima,
 } from "./demo.js";
 import { PONTOS_CAPITAL } from "./pontosCapital.js";
@@ -35,7 +35,7 @@ test("todos os sensores funcionando: leitura recente e previsão válida em qual
       assert.equal(p.statusSensor, "ATIVO");
       assert.equal(p.semLeituraSensor, false);
       assert.ok(p.agua >= 0 && p.agua <= 100);
-      assert.ok(p.lixo >= 0 && p.lixo <= 100);
+      assert.equal("lixo" in p, false, "o sensor mede só a água");
       assert.ok(AGORA - p.leituraEm <= 9 * 60000);
       assert.equal(statusAgora(p, AGORA), "VALIDA");
       assert.equal(p.historicoAgua.length, 12);
@@ -55,8 +55,8 @@ test("sol: cidade inteira em nível baixo e sem chuva", () => {
 
 test("cada clima é visivelmente pior que o anterior", () => {
   const [sol, chuvisco, forte, extrema] = ["sol", "chuvisco", "chuva-forte", "chuva-extrema"].map(niveis);
-  // chuvisco: maioria em baixo, alguns em médio (os entupidos), ninguém em alto
-  assert.ok(chuvisco[0] > 90 && chuvisco[1] > 10 && chuvisco[2] + chuvisco[3] === 0, `chuvisco ${chuvisco}`);
+  // chuvisco: não chega a preocupar; a água sobe um pouco, mas ninguém passa de médio
+  assert.ok(chuvisco[0] > 120 && chuvisco[2] + chuvisco[3] === 0, `chuvisco ${chuvisco}`);
   // chuva forte: de tudo um pouco, com alguns críticos
   assert.ok(forte[0] > 10 && forte[1] > 40 && forte[2] > 15 && forte[3] >= 2, `forte ${forte}`);
   // chuva extrema: a maioria em alto ou crítico
@@ -91,34 +91,31 @@ test("a chance junta chuva, lugar e sensor, e o nível sai dela pelos limiares d
       // O sensor entra por cima da chance da chuva e do lugar, e nunca a diminui.
       assert.ok(p.probabilidade >= p.probabilidadeSemSensor, p.codigo);
       assert.ok(p.probabilidade > 0 && p.probabilidade < 1, p.codigo);
-      const esperada = chanceComSensor(p.probabilidadeSemSensor, { agua: p.agua, lixo: p.lixo, chuvaRecente3h: p.chuvaRecente3h }).probabilidade;
+      const esperada = chanceComSensor(p.probabilidadeSemSensor, { agua: p.agua }).probabilidade;
       assert.equal(p.probabilidade, esperada, p.codigo);
       assert.equal(p.nivelModelo, nivelDe(p.probabilidadeSemSensor), p.codigo);
       assert.equal(p.nivel, p.medicaoTransbordando ? 4 : nivelDe(p.probabilidade), p.codigo);
       assert.equal(p.ajusteSensorAplicado, p.nivel > p.nivelModelo, p.codigo);
       // Quem subiu de nível por causa do sensor tem leitura que justifica.
-      if (p.nivel > p.nivelModelo) assert.ok(p.agua > 50 || p.lixo > 30, `${p.codigo} subiu sem motivo`);
+      if (p.nivel > p.nivelModelo) assert.ok(p.agua > 50, `${p.codigo} subiu sem motivo`);
     }
   }
 });
 
-test("pesos do sensor: nada até a metade de água e 30% de lixo; daí para cima, cada vez mais", () => {
+test("peso do sensor: nada até a metade do bueiro; daí para cima, cada vez mais", () => {
   assert.deepEqual([0, 30, 50].map(fatorDaAgua), [1, 1, 1]);
-  assert.ok(Math.abs(fatorDaAgua(65) - 2) < 1e-9 && Math.abs(fatorDaAgua(80) - 6) < 1e-9 && Math.abs(fatorDaAgua(99) - 12) < 1e-9);
+  assert.ok(Math.abs(fatorDaAgua(65) - 2.5) < 1e-9 && Math.abs(fatorDaAgua(80) - 7) < 1e-9 && Math.abs(fatorDaAgua(99) - 12) < 1e-9);
   assert.equal(fatorDaAgua(100), 12);
   for (let a = 1; a <= 100; a += 1) assert.ok(fatorDaAgua(a) >= fatorDaAgua(a - 1), `água ${a}`);
-  assert.equal(fatorDoLixo(90, 0), 1, "sem chuva o lixo não pesa");
-  assert.deepEqual([10, 30].map((l) => fatorDoLixo(l, 12)), [1, 1]);
-  assert.ok(Math.abs(fatorDoLixo(60, 12) - 3) < 1e-9 && Math.abs(fatorDoLixo(100, 12) - 5) < 1e-9);
   // Sem leitura (sensor fora do ar), a chance fica a da chuva e do lugar.
-  assert.equal(chanceComSensor(0.02, { agua: null, lixo: null, chuvaRecente3h: 20 }).probabilidade, 0.02);
+  assert.equal(chanceComSensor(0.02, { agua: null }).probabilidade, 0.02);
 });
 
 test("quem alaga mais e fica perto de córrego reage mais", () => {
   const maisSensivel = PONTOS_BASE.reduce((a, b) => (a.sensibilidade > b.sensibilidade ? a : b));
   const menosSensivel = PONTOS_BASE.reduce((a, b) => (a.sensibilidade < b.sensibilidade ? a : b));
   assert.ok(maisSensivel.freqHistorica > menosSensivel.freqHistorica);
-  const mesmoLugar = { manchaDeChuva: 1, lixo: 30, aguaSeca: 10 };
+  const mesmoLugar = { manchaDeChuva: 1, enche: 1, aguaSeca: 10 };
   const forte = situacaoDoPonto({ ...maisSensivel, ...mesmoLugar }, 0.68);
   const fraco = situacaoDoPonto({ ...menosSensivel, ...mesmoLugar }, 0.68);
   assert.ok(forte.agua > fraco.agua && forte.probabilidade > fraco.probabilidade);

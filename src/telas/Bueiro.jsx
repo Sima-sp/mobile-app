@@ -1,5 +1,5 @@
 // Tela de um bueiro: tudo o que se sabe sobre o ponto.
-// Regra de ouro do SIMA: o que foi MEDIDO pelo sensor (água, lixo, hora da leitura) aparece
+// Regra de ouro do SIMA: o que foi MEDIDO pelo sensor (nível da água, hora da leitura) aparece
 // separado do que foi PREVISTO pela IA (nível de risco e chance nas próximas horas). A previsão
 // usa a medição (bueiro enchendo aumenta a chance), mas a tela não mistura os dois números.
 
@@ -50,21 +50,22 @@ export default function Bueiro() {
       </section>
 
       <div className="bu-cards">
+        {/* A chuva deste ponto: o que caiu e o que ainda vem. O sensor mede só a água (acima). */}
         <div className="bu-card">
-          <span className="label">Lixo acumulado</span>
-          <div className="bu-num">{temLeitura ? porcento(ponto.lixo) : "—"}</div>
-          <div className="bu-track"><i style={{ width: `${temLeitura ? Math.min(100, ponto.lixo ?? 0) : 0}%`, background: cor }} /></div>
-          <p className="micro" style={{ marginTop: 8 }}>{temLeitura ? "Medido pelo sensor" : "Sem leitura do sensor"}</p>
-        </div>
-        <div className="bu-card">
-          <span className="label">Chuva em 3 h</span>
+          <span className="label">Choveu em 3 h</span>
           <div className="bu-num">
             {ponto.chuvaRecente3h === null ? "—" : <>{milimetros(ponto.chuvaRecente3h).replace(" mm", "")}<span className="bu-un">mm</span></>}
           </div>
           <div className="bu-track"><i style={{ width: `${Math.min(100, ((ponto.chuvaRecente3h ?? 0) / 50) * 100)}%`, background: "var(--route)" }} /></div>
-          <p className="micro" style={{ marginTop: 8 }}>
-            {ponto.chuvaPrevista3h === null ? "Sem previsão de chuva" : `Mais ${milimetros(ponto.chuvaPrevista3h)} previstos em 3 h`}
-          </p>
+          <p className="micro" style={{ marginTop: 8 }}>{ponto.chuvaRecente3h === null ? "Sem dado de chuva" : "Chuva que já caiu"}</p>
+        </div>
+        <div className="bu-card">
+          <span className="label">Previsto para 3 h</span>
+          <div className="bu-num">
+            {ponto.chuvaPrevista3h === null ? "—" : <>{milimetros(ponto.chuvaPrevista3h).replace(" mm", "")}<span className="bu-un">mm</span></>}
+          </div>
+          <div className="bu-track"><i style={{ width: `${Math.min(100, ((ponto.chuvaPrevista3h ?? 0) / 50) * 100)}%`, background: "var(--route)" }} /></div>
+          <p className="micro" style={{ marginTop: 8 }}>{ponto.chuvaPrevista3h === null ? "Sem previsão de chuva" : "Chuva que ainda vem"}</p>
         </div>
       </div>
 
@@ -247,7 +248,7 @@ function PlacaPrevisao({ ponto, agora }) {
       <div>
         <h2 className="label" style={{ color: "var(--bone-50)", fontSize: 15 }}>{chance ? "Previsão da IA" : "Estimativa por regras"}</h2>
         <p className="small" style={{ marginTop: 6 }}>
-          Risco de alagar nas próximas {ponto.janelaHoras} h, pela chuva{ponto.semLeituraSensor ? " (sem a leitura do sensor)" : " e pelas leituras deste ponto"}.
+          Risco de alagar nas próximas {ponto.janelaHoras} h, pela chuva e pelo histórico do lugar{ponto.semLeituraSensor ? " (sem a leitura do sensor)" : ", com a leitura do sensor"}.
         </p>
         {pesoDoSensor ? <p className="micro" style={{ marginTop: 8 }}>{pesoDoSensor}</p> : null}
         {chance ? <p className="micro" style={{ marginTop: 8 }}>Alagamento é raro: na maior parte do tempo essa chance fica abaixo de 0,5%.</p> : null}

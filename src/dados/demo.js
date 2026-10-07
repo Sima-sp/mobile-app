@@ -13,8 +13,9 @@
 //      córrego reage mais à chuva.
 //   2. O clima define uma INTENSIDADE de 0 a 1. Dela e da sensibilidade do ponto saem a chuva em
 //      milímetros, o nível da água no bueiro e uma primeira chance de alagar (só chuva e lugar).
-//   3. A LEITURA DO SENSOR ENTRA NA CHANCE: água acima da metade e lixo acima de 30 % (com chuva)
-//      multiplicam a chance. O sensor não é só um medidor: ele faz parte da previsão.
+//   3. A LEITURA DO SENSOR ENTRA NA CHANCE: água acima da metade do bueiro multiplica a chance.
+//      O sensor não é só um medidor: ele faz parte da previsão. (O sensor do SIMA mede só a água;
+//      o lixo saiu do projeto em 06/10/2026.)
 //      Os pesos são uma regra do grupo, não algo aprendido (ver chanceComSensor, abaixo).
 //   4. A chance final vira nível pelos limiares reais do modelo v1 (médio a partir de 0,41 %,
 //      alto a partir de 1,19 %, crítico a partir de 25 %). Água em 100 % é "transbordando agora":
@@ -80,7 +81,8 @@ const BASE = PONTOS_CAPITAL.map((p) => {
   return {
     ...p,
     sensibilidade: sensibilidadeDoLugar(p.freqHistorica, p.distCorrego, fixo(p.id, 1)),
-    lixo: Math.round(8 + 72 * fixo(p.id, 2) ** 1.25),
+    // Cada bueiro enche de um jeito (tamanho, ligação com a galeria): uns sobem mais com a mesma chuva.
+    enche: 0.82 + 0.36 * fixo(p.id, 2),
     aguaSeca: 4 + 13 * fixo(p.id, 3),
     leituraHa: 1 + Math.floor(fixo(p.id, 4) * 8),
     previsaoHa: 1 + Math.floor(fixo(p.id, 5) * 4),
@@ -135,9 +137,9 @@ export function trocarClima(estado, clima, agora = new Date()) {
  */
 const PRESSAO_PARA_CHANCE = [
   [0, 0.0007],
-  [0.33, LIMIARES.medio],
+  [0.28, LIMIARES.medio],
   [0.6, LIMIARES.alto],
-  [0.72, 0.1],
+  [0.7, 0.11],
   [0.88, LIMIARES.critico],
   [1.2, 0.6],
 ];
@@ -183,22 +185,12 @@ export function previsaoPelaChuva(forca, sensibilidade) {
 
 /**
  * Quantas vezes a leitura de ÁGUA multiplica a chance. Bueiro até a metade não muda nada; daí
- * para cima a chance cresce cada vez mais depressa: 2 vezes em 65 %, 6 vezes em 80 % e 12 vezes
+ * para cima a chance cresce cada vez mais depressa: 2,5 vezes em 65 %, 7 vezes em 80 % e 12 vezes
  * quando está quase cheio. Nunca diminui a chance.
  */
-const AGUA_PARA_FATOR = [[50, 1], [65, 2], [80, 6], [99, 12]];
+const AGUA_PARA_FATOR = [[50, 1], [65, 2.5], [80, 7], [99, 12]];
 export function fatorDaAgua(agua) {
   return interpolarFator(AGUA_PARA_FATOR, agua ?? 0);
-}
-
-/**
- * Quantas vezes a leitura de LIXO multiplica a chance. Só pesa quando chove (com muito lixo a
- * água escoa pior): de 30 % para cima, 3 vezes em 60 % e 5 vezes com o bueiro todo tomado.
- */
-const LIXO_PARA_FATOR = [[30, 1], [60, 3], [100, 5]];
-export function fatorDoLixo(lixo, chuvaRecente3h) {
-  if (!(chuvaRecente3h >= 0.5)) return 1;
-  return interpolarFator(LIXO_PARA_FATOR, lixo ?? 0);
 }
 
 /** Lê uma tabela [leitura, fator]; entre uma linha e outra o fator cresce em escala logarítmica. */
@@ -214,34 +206,33 @@ function interpolarFator(tabela, valor) {
 
 /**
  * A parte do SENSOR: a leitura do bueiro entra na conta da chance.
- * A chance que saiu da chuva e do lugar é multiplicada pelo que o sensor mostra (água e lixo),
- * como quem atualiza um palpite ao receber uma evidência nova. A conta é feita em "chances contra
+ * A chance que saiu da chuva e do lugar é multiplicada pelo que o sensor mostra (o nível da
+ * água), como quem atualiza um palpite ao receber uma evidência nova. A conta é feita em "chances contra
  * e a favor" (odds), para o resultado nunca passar de 100 %.
  *
- * Os pesos (as tabelas acima) são uma REGRA escolhida pelo grupo, não algo que a IA aprendeu:
+ * Os pesos (a tabela acima) são uma REGRA escolhida pelo grupo, não algo que a IA aprendeu:
  * ainda não existe histórico de leituras de sensor para treinar. Quando existir, é este o ponto
  * que o treino substitui. Ver "O sensor na previsão", no README.
  *
- * @returns {{ probabilidade: number, fatorAgua: number, fatorLixo: number }}
+ * @returns {{ probabilidade: number, fatorAgua: number }}
  */
-export function chanceComSensor(chancePelaChuva, { agua, lixo, chuvaRecente3h }) {
+export function chanceComSensor(chancePelaChuva, { agua }) {
   const fatorAgua = fatorDaAgua(agua);
-  const fatorLixo = fatorDoLixo(lixo, chuvaRecente3h);
-  // Leituras baixas (ou sensor sem leitura): a chance da chuva e do lugar passa sem mudança.
-  if (fatorAgua === 1 && fatorLixo === 1) return { probabilidade: chancePelaChuva, fatorAgua, fatorLixo };
-  const odds = (chancePelaChuva / (1 - chancePelaChuva)) * fatorAgua * fatorLixo;
-  return { probabilidade: odds / (1 + odds), fatorAgua, fatorLixo };
+  // Leitura baixa (ou sensor sem leitura): a chance da chuva e do lugar passa sem mudança.
+  if (fatorAgua === 1) return { probabilidade: chancePelaChuva, fatorAgua };
+  const odds = (chancePelaChuva / (1 - chancePelaChuva)) * fatorAgua;
+  return { probabilidade: odds / (1 + odds), fatorAgua };
 }
 
 /**
  * A previsão completa de um bueiro: chuva e lugar (previsaoPelaChuva) mais a leitura do sensor
  * (chanceComSensor). O nível sai da chance final pelos limiares do modelo. Água em 100 % é
  * "transbordando agora": aí é medição, e o nível é crítico.
- * @returns {{ probabilidade, probabilidadeSemSensor, nivelModelo, nivel, medicaoTransbordando, fatorAgua, fatorLixo }}
+ * @returns {{ probabilidade, probabilidadeSemSensor, nivelModelo, nivel, medicaoTransbordando, fatorAgua }}
  *   nivelModelo é o nível que a chuva e o lugar dariam sozinhos, sem o sensor
  */
 export function preverComSensor(chancePelaChuva, leitura) {
-  const { probabilidade, fatorAgua, fatorLixo } = chanceComSensor(chancePelaChuva, leitura);
+  const { probabilidade, fatorAgua } = chanceComSensor(chancePelaChuva, leitura);
   const medicaoTransbordando = leitura.agua >= 100;
   return {
     probabilidade,
@@ -250,9 +241,11 @@ export function preverComSensor(chancePelaChuva, leitura) {
     nivel: medicaoTransbordando ? 4 : nivelPelaChance(probabilidade),
     medicaoTransbordando,
     fatorAgua,
-    fatorLixo,
   };
 }
+
+/** Quanto a água sobe no bueiro com a "pressão" da chuva (em pontos percentuais, antes do ajuste de cada bueiro). */
+const AGUA_POR_PRESSAO = 126;
 
 /** Leituras e previsão de um ponto para uma intensidade de chuva. Exportada para os testes. */
 export function situacaoDoPonto(p, intensidade) {
@@ -261,23 +254,23 @@ export function situacaoDoPonto(p, intensidade) {
 
   const chuvaRecente3h = chuvaEm3h(forca);
   const chuvaPrevista3h = Math.round(31 * forca ** 1.8 * 10) / 10;
-  // A água no bueiro sobe com a mesma pressão e um pouco mais onde há muito lixo (escoa pior).
-  const agua = Math.round(limitar(p.aguaSeca + 122 * (pressao + 0.05 * forca * (p.lixo / 100)) ** 1.36, 0, 100));
-  const previsao = preverComSensor(chancePelaChuva, { agua, lixo: p.lixo, chuvaRecente3h });
+  // A água no bueiro sobe com a mesma pressão, mais depressa nos bueiros que enchem fácil.
+  const agua = Math.round(limitar(p.aguaSeca + AGUA_POR_PRESSAO * p.enche * pressao ** 1.36, 0, 100));
+  const previsao = preverComSensor(chancePelaChuva, { agua });
 
   return { chuvaRecente3h, chuvaPrevista3h, agua, ...previsao };
 }
 
 /**
- * Simulador da tela "Como a IA funciona": a pessoa escolhe a chuva, o lugar e as leituras do
+ * Simulador da tela "Como a IA funciona": a pessoa escolhe a chuva, o lugar e a leitura do
  * sensor, e recebe o que o sistema responderia. É a mesma conta da demonstração.
- * @param {{ chuva: number, sensibilidade: number, agua: number, lixo: number }} entrada
- *   chuva de 0 a 1; água e lixo em %
+ * @param {{ chuva: number, sensibilidade: number, agua: number }} entrada
+ *   chuva de 0 a 1; água em %
  */
-export function simularPrevisao({ chuva, sensibilidade, agua, lixo }) {
+export function simularPrevisao({ chuva, sensibilidade, agua }) {
   const chuvaRecente3h = chuvaEm3h(chuva);
   const { probabilidade: chancePelaChuva } = previsaoPelaChuva(chuva, sensibilidade);
-  return { chuvaRecente3h, ...preverComSensor(chancePelaChuva, { agua, lixo, chuvaRecente3h }) };
+  return { chuvaRecente3h, ...preverComSensor(chancePelaChuva, { agua }) };
 }
 
 /** Curva das últimas 12 horas: nível de tempo seco e, nas 3 horas finais, a subida até agora. */
@@ -324,7 +317,6 @@ export function gerarPontosDemo(agora = new Date(), estado = criarEstadoDemo()) 
       origem: "MODELO",
       modeloVersao: "demonstração",
       agua: s.agua,
-      lixo: p.lixo,
       leituraEm: atras(p.leituraHa),
       chuvaRecente3h: s.chuvaRecente3h,
       chuvaPrevista3h: s.chuvaPrevista3h,
@@ -334,5 +326,5 @@ export function gerarPontosDemo(agora = new Date(), estado = criarEstadoDemo()) 
   });
 }
 
-/** Características fixas dos pontos (sensibilidade, lixo...). Só para testes e ajustes. */
+/** Características fixas dos pontos (sensibilidade, o quanto enche...). Só para testes e ajustes. */
 export const PONTOS_BASE = BASE;

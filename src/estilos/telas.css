@@ -1,6 +1,6 @@
 /* Estilos de cada tela do app. Prefixos: app- (casca), mp- (mapa), mk- (marcadores), ms- (cartão do bueiro),
    rt- (rotas), bs- (busca), br- (bairros), bu- (bueiro), mu- (menu), ec- (em construção),
-   av- (avisos por região), ia- (como a IA funciona), pu- (primeiro uso).
+   av- (avisos por região), ia- (como a IA funciona), pu- (primeiro uso), se- (sensor ao vivo).
    Os componentes compartilhados (vidro, listas, botões) ficam em base.css. */
 
 /* ── Casca do app ──
@@ -89,8 +89,8 @@
 .ms-addr { font-size: 15.5px; color: var(--bone-300); margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-stat { font-size: 15.5px; font-weight: 700; margin-top: 4px; }
 .ms-x { width: 40px; height: 40px; margin-top: 2px; }
-/* Faixa de números: três colunas separadas por um fio, sem caixas. */
-.ms-fatos { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.25fr); margin: 16px 0 0; padding: 14px 0 13px;
+/* Faixa de números: duas colunas (água medida, chance prevista) separadas por um fio, sem caixas. */
+.ms-fatos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 16px 0 0; padding: 14px 0 13px;
   border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); }
 .ms-fato { min-width: 0; padding: 0 8px 0 14px; }
 .ms-fato:first-child { padding-left: 6px; }
@@ -318,7 +318,7 @@
 .ia-faixa:focus-visible { outline: none; }
 .ia-faixa:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
 .ia-faixa:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
-/* Risco no ponto em que a leitura passa a pesar na chance (50% de água, 30% de lixo). O polegar do
+/* Risco no ponto em que a leitura passa a pesar na chance (50% de água). O polegar do
    controle tem 28 px, então o centro dele anda de 14 px a (100% - 14 px). */
 .ia-marca { position: absolute; top: 9px; width: 2px; height: 26px; margin-left: -1px; border-radius: 1px; background: var(--bone-500);
   pointer-events: none; }
@@ -361,7 +361,7 @@
 .pu-acoes .btn { width: 100%; border-radius: 25px; }
 .pu-niveis { display: flex; gap: 14px; }
 .pu-niveis span { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
-.pu-fatos { display: grid; grid-template-columns: minmax(0, 0.88fr) minmax(0, 0.88fr) minmax(0, 1.24fr); width: 100%; border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); }
+.pu-fatos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); }
 .pu-fatos div { display: flex; flex-direction: column; gap: 4px; padding: 12px 4px 12px 10px; min-width: 0; }
 .pu-fatos div:first-child { padding-left: 2px; }
 .pu-fatos div + div { border-left: 1px solid var(--sep); }
@@ -383,3 +383,65 @@
   .pu-titulo { font-size: 22px; margin-top: 10px; }
   .pu-texto { font-size: 15.5px; }
 }
+
+/* ── Sensor ao vivo ── */
+.se-intro { padding: 12px 20px 0; }
+.se-painel { margin: 16px 16px 0; padding: 14px 16px 16px; }
+/* Bueiro em corte. As cores vêm dos tokens: a água é azul (como no mapa) e o sensor molhado usa
+   a cor do nível crítico, a mesma que o bueiro ganharia no mapa. */
+.se-desenho { display: block; width: 100%; height: auto; max-height: 250px; }
+.se-terra { fill: var(--fill-2); }
+.se-oco { fill: var(--lid-bg); }
+.se-rua { fill: var(--iron-500); }
+.se-tampa { fill: var(--iron-400); }
+.se-frestas { stroke: var(--lid-bg); stroke-width: 4; stroke-linecap: round; fill: none; }
+.se-agua { fill: var(--route-deep); opacity: 0.85; transition: transform 900ms cubic-bezier(.3,.7,.2,1), opacity 300ms; }
+.se-desenho-vazio .se-agua { opacity: 0.35; }
+.se-marca { stroke: var(--bone-500); stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+.se-fio { stroke: var(--bone-500); stroke-width: 2; fill: none; stroke-linejoin: round; }
+.se-placa { fill: var(--card); stroke: var(--bone-500); stroke-width: 1.5; }
+.se-sensor { fill: var(--bone-300); transition: fill 300ms; }
+.se-hastes { stroke: var(--bone-300); stroke-width: 3; stroke-linecap: round; fill: none; transition: stroke 300ms; }
+.se-desenho-molhado .se-sensor { fill: var(--r4); }
+.se-desenho-molhado .se-hastes { stroke: var(--r4); }
+.se-seta { stroke: var(--bone-500); stroke-width: 1.5; fill: none; }
+.se-letra { font-family: var(--f-ui); font-size: 12px; font-weight: 700; fill: var(--bone-300); }
+.se-letra-agua { transition: y 900ms; }
+.se-estado { margin-top: 12px; }
+.se-titulo { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--bone-50); margin-bottom: 4px; }
+.se-titulo.se-molhado { color: var(--r4); }
+.se-origem { margin-top: 6px; font-variant-numeric: tabular-nums; }
+.se-calibrar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.se-calibrar .btn { flex: 1 1 140px; min-height: 46px; padding: 0 12px; font-size: 15.5px; }
+.se-calibrar-ajustes { padding: 0 16px 14px; margin-top: 0; }
+.se-calibrar-ajustes .btn-line { flex: 0 0 auto; }
+.se-no-app { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--sep); }
+.se-no-app b { display: block; color: var(--bone-50); font-weight: 700; }
+.se-acoes { padding: 14px 16px 0; }
+.se-acoes .btn { width: 100%; border-radius: 25px; }
+.se-situacao { padding: 10px 20px 0; }
+.se-erro { padding: 10px 20px 0; color: var(--r3); }
+.se-historico { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 16px; padding: 14px 16px; }
+.se-ponto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--iron-400); flex: none; }
+.se-ponto-seco { border-color: var(--bone-300); }
+.se-ponto-molhado { border-color: var(--r4); background: var(--r4); }
+.se-legenda { display: flex; align-items: center; gap: 6px; padding: 8px 36px 0; }
+.se-legenda .se-ponto + .se-ponto, .se-legenda .se-ponto:not(:first-child) { margin-left: 10px; }
+.se-legenda span { margin-left: auto; }
+.se-nota { padding: 8px 36px 0; }
+.se-passos { list-style: none; padding: 0; }
+.se-passos li { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; }
+.se-passos li + li { border-top: 1px solid var(--sep); }
+.se-passos span { width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--fill-3); color: var(--bone-50); font-weight: 800; font-size: 14px; }
+.se-passos p { padding-top: 2px; color: var(--bone-100); }
+.se-ajustes { margin: 22px 16px 0; }
+.se-ajustes summary { min-height: 44px; display: flex; align-items: center; padding: 0 20px; border-radius: 14px; cursor: pointer;
+  color: var(--route); font-size: 15.5px; font-weight: 700; }
+.se-ajustes summary:hover { background: var(--fill-2); }
+.se-select { height: 40px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--fill-2); color: var(--bone-50); font: inherit; font-size: 15.5px; }
+.se-linha-cal:hover { background: transparent; }
+label.row { cursor: pointer; }
+.se-sub { margin: 16px 20px 6px; font-size: 13.5px; font-weight: 700; color: var(--bone-500); }
+.se-cru { margin: 0; padding: 12px 16px; border-radius: 16px; background: var(--card); color: var(--bone-300); font-family: var(--f-mono); font-size: 13px;
+  line-height: 1.5; white-space: pre-wrap; word-break: break-word; min-height: 3em; }

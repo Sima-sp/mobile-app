@@ -3,8 +3,8 @@
 //
 // A conta em si é a de src/dados/demo.js (simularPrevisao), a mesma que move a demonstração do
 // mapa. Não é o modelo de verdade rodando no aparelho: é uma versão simplificada que responde do
-// mesmo jeito (mais chuva e mais histórico de alagamento dão mais chance; bueiro enchendo ou com
-// muito lixo multiplica essa chance).
+// mesmo jeito (mais chuva e mais histórico de alagamento dão mais chance; bueiro enchendo
+// multiplica essa chance).
 
 import { LIMIARES, PONTOS_BASE, simularPrevisao } from "./demo.js";
 import { textoProbabilidade } from "./modelo.js";
@@ -34,11 +34,11 @@ export const LUGARES_DO_SIMULADOR = [
 
 /** Atalhos: cada um ajusta os controles para uma situação que vale a pena ver. */
 export const CENARIOS = [
-  { id: "seco", rotulo: "Dia seco", chuva: 0, agua: 8, lixo: 20 },
-  { id: "forte", rotulo: "Chuva forte", chuva: 0.68, agua: 45, lixo: 20 },
-  { id: "temporal", rotulo: "Temporal", chuva: 1, agua: 70, lixo: 20 },
-  { id: "entupido", rotulo: "Bueiro entupido", chuva: 0.5, agua: 82, lixo: 80 },
-  { id: "transbordando", rotulo: "Transbordando", chuva: 0.85, agua: 100, lixo: 40 },
+  { id: "seco", rotulo: "Dia seco", chuva: 0, agua: 8 },
+  { id: "forte", rotulo: "Chuva forte", chuva: 0.68, agua: 45 },
+  { id: "temporal", rotulo: "Temporal", chuva: 1, agua: 70 },
+  { id: "enchendo", rotulo: "Bueiro enchendo", chuva: 0.4, agua: 88 },
+  { id: "transbordando", rotulo: "Transbordando", chuva: 0.85, agua: 100 },
 ];
 
 /** Nome da chuva pelos milímetros em 3 horas. */
@@ -68,14 +68,17 @@ export function vezes(fator) {
 
 /**
  * Responde à simulação e explica a resposta em frases curtas.
- * @param {{ chuva: number, agua: number, lixo: number }} entrada  chuva de 0 a 1; água e lixo em %
+ * @param {{ chuva: number, agua: number }} entrada  chuva de 0 a 1; água em %
  * @param {{ nome, sensibilidade, freqHistorica, distCorrego }} lugar
  * @returns {{ ...resultado de simularPrevisao, rotuloChuva: string,
- *   passos: Array<{ id: "chuva"|"lugar"|"agua"|"lixo", titulo: string, texto: string, efeito: "sobe"|"medido"|null }> }}
+ *   passos: Array<{ id: "chuva"|"lugar"|"agua", titulo: string, texto: string, efeito: "sobe"|"medido"|null }> }}
  */
 export function responder(entrada, lugar) {
   const resultado = simularPrevisao({ ...entrada, sensibilidade: lugar.sensibilidade });
-  const { chuvaRecente3h: mm, fatorAgua, fatorLixo } = resultado;
+  const { chuvaRecente3h: mm } = resultado;
+  // Quantas vezes a chance cresceu de verdade com o sensor. Com chance pequena é o próprio peso da
+  // leitura; perto de 100 % é menos (uma chance de 31 % não tem como ficar 3 vezes maior).
+  const cresceu = resultado.probabilidade / resultado.probabilidadeSemSensor;
   const rotuloChuva = rotuloDaChuva(mm);
 
   const chuva = {
@@ -94,33 +97,24 @@ export function responder(entrada, lugar) {
   let agua;
   if (resultado.medicaoTransbordando) {
     agua = { titulo: "Água em 100%: transbordando", texto: "O sensor mediu o bueiro cheio. O app mostra “Transbordando agora”: é medição, não previsão.", efeito: "medido" };
-  } else if (fatorAgua > 1.02) {
-    agua = { titulo: `Água em ${entrada.agua}%: enchendo`, texto: `Sinal de que a água não está escoando: a chance fica ${vezes(fatorAgua)} maior.`, efeito: "sobe" };
+  } else if (cresceu > 1.02) {
+    agua = { titulo: `Água em ${entrada.agua}%: enchendo`, texto: `Sinal de que a água não está escoando: a chance fica ${vezes(cresceu)} maior.`, efeito: "sobe" };
   } else {
     agua = { titulo: `Água em ${entrada.agua}%`, texto: "Até a metade do bueiro, a leitura não muda a chance.", efeito: null };
   }
 
-  let lixo;
-  if (fatorLixo > 1.02) {
-    lixo = { titulo: `Lixo em ${entrada.lixo}% com chuva`, texto: `Com lixo a água escoa pior: a chance fica ${vezes(fatorLixo)} maior.`, efeito: "sobe" };
-  } else if (entrada.lixo > 30 && mm < 0.5) {
-    lixo = { titulo: `Lixo em ${entrada.lixo}%, sem chuva`, texto: "O lixo só pesa quando chove: é ele que impede a água de escoar.", efeito: null };
-  } else {
-    lixo = { titulo: `Lixo em ${entrada.lixo}%`, texto: "Até 30%, a leitura não muda a chance.", efeito: null };
-  }
-
-  return { ...resultado, rotuloChuva, passos: [chuva, lugarPasso, { id: "agua", ...agua }, { id: "lixo", ...lixo }] };
+  return { ...resultado, rotuloChuva, passos: [chuva, lugarPasso, { id: "agua", ...agua }] };
 }
 
 /**
  * Frase que mostra o quanto o sensor pesou: a chance só pela chuva e pelo lugar, e a chance com
- * as leituras do bueiro.
+ * a leitura do bueiro.
  */
 export function fraseDoResultado(resultado) {
   const semSensor = textoProbabilidade(resultado.probabilidadeSemSensor);
   if (resultado.medicaoTransbordando) return "O sensor mediu o bueiro cheio. Isso é medição, e vale mais que qualquer previsão.";
-  const fator = resultado.fatorAgua * resultado.fatorLixo;
-  if (fator <= 1.02) return `A chance vem da chuva e do lugar: ${semSensor}. As leituras do sensor estão baixas e não mudam a conta.`;
+  const fator = resultado.probabilidade / resultado.probabilidadeSemSensor;
+  if (fator <= 1.02) return `A chance vem da chuva e do lugar: ${semSensor}. O sensor mede pouca água e não muda a conta.`;
   const subiu = resultado.nivel > resultado.nivelModelo
     ? ` O nível vai de ${rotuloNivel(resultado.nivelModelo).toLowerCase()} para ${rotuloNivel(resultado.nivel).toLowerCase()}.`
     : "";
