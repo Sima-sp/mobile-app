@@ -216,16 +216,32 @@ Os limites vêm de `GET /api/limites`; sem resposta, valem os da tabela. Três c
 - **Medida impossível não vira bueiro cheio.** Zero, negativo ou acima de 6 m é o que um sensor
   de distância devolve quando não recebe o eco. A tela mostra "Leitura inválida" em vez de um
   nível. (O servidor do sensor, em 06/10/2026, classifica `0` como Crítico.)
-- **O nível não pisca.** A tela mostra a mediana das leituras válidas dos últimos 3,5 s (até
-  três): uma medida isolada fora do lugar não muda o nível.
-- **Sensor parado.** Sem leitura nova por 10 s (ou três vezes o ritmo normal do sensor), a tela
-  avisa e deixa de mostrar nível. O servidor guarda a última leitura para sempre; quem percebe
-  que ela ficou velha é a tela, pelo carimbo `em`.
+- **Mediana, quando há leituras de sobra.** A tela mostra a mediana das leituras válidas do
+  último 1,5 s. Com o firmware de hoje, que envia a cada 2 s, isso é simplesmente a última
+  leitura (sem atraso); a mediana só entra se o envio ficar mais rápido.
+- **Sensor parado.** Sem leitura nova por 10 s (cinco envios), a tela avisa e deixa de mostrar
+  nível. O servidor guarda a última leitura para sempre; quem percebe que ela ficou velha é a
+  tela, pelo carimbo `em`. O firmware só envia quando consegue medir, então "parado" pode ser a
+  placa desligada, o Wi-Fi ou o sensor sem eco.
+
+**O que o firmware do protótipo faz** (código visto em 06/10/2026; não está neste repositório):
+
+- Sensor de distância por ultrassom (pinos de disparo e de eco). Mede cerca de 20 vezes por
+  segundo e **envia uma leitura a cada 2 s**, com `device: "bueiro_01"`.
+- **Só envia leitura válida**: sem eco, ou fora de 2 a 450 cm, ele não envia nada. Por isso o `0`
+  que viraria Crítico no servidor não sai deste firmware.
+- O nome e a senha do Wi-Fi e o **endereço do servidor ficam escritos no código**. Em outra rede,
+  ou se o computador do servidor receber outro endereço, a placa precisa ser gravada de novo.
+- Um LED na placa pisca mais rápido conforme a água chega perto (limites próprios: 25 e 45 cm,
+  diferentes dos do servidor).
 
 **Para usar na bancada:**
 
-1. Ligue o servidor do sensor (`node server.js`) **no mesmo computador que vai mostrar a tela** e
-   confira que o ESP32 está na mesma rede Wi-Fi e enviando.
+1. Ponha o computador do servidor na rede que está no código do ESP32 (o roteador do celular)
+   **antes de ligar a placa**, e confira que ele recebeu o endereço que está em `SERVER_URL`.
+   Se recebeu outro, troque o `SERVER_URL` e grave a placa de novo. Ligue o servidor do sensor
+   (`node server.js`) **nesse mesmo computador, que é o que vai mostrar a tela**, e só então a
+   placa. No monitor serial (115200) deve aparecer `Envio -> codigo HTTP: 200`.
 2. Abra o app no **Chrome** desse computador, vá em Menu → "Sensor ao vivo" e toque em
    "Conectar ao sensor". A tela procura o servidor em `http://localhost:3000`.
 3. O Chrome pergunta se a página pode **acessar a rede local** (ou outros apps do dispositivo):

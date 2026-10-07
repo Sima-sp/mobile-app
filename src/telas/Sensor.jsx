@@ -33,10 +33,14 @@ const INTERVALO_MS = 1000;
 const FALHAS_PARA_AVISAR = 3;
 /** Procurando o servidor há mais que isto, a tela já mostra o que conferir (sem parar de procurar). */
 const DEMORA_MS = 8000;
-/** Sem leitura nova por este tempo, a tela avisa que o sensor parou. */
+/** Sem leitura nova por este tempo (cinco envios do firmware), a tela avisa que o sensor parou. */
 const PARADO_MS = 10000;
-/** Leituras mais novas que isto (em relação à última) entram na mediana que a tela mostra. */
-const JANELA_MS = 3500;
+/**
+ * Leituras mais novas que isto (em relação à última) entram na mediana que a tela mostra.
+ * O firmware do protótipo envia uma leitura a cada 2 s, então hoje a tela mostra a última leitura,
+ * sem atraso. A mediana só entra em ação se o envio ficar mais rápido que isto.
+ */
+const JANELA_MS = 1500;
 /** A simulação vai desta distância (quase encostando no sensor) até o fim do desenho. */
 const SIMULADA_MINIMA = 5;
 
@@ -206,7 +210,8 @@ export default function Sensor() {
     frase = `O sensor mandou ${String(ultima.distancia).replace(".", ",")} cm, que não é uma medida possível. Em geral é o sensor sem receber o eco de volta: confira se ele está apontado para a água.`;
   } else if (parado) {
     titulo = "Sensor parado";
-    frase = `A última leitura chegou ${haQuanto(ultima.quando, agora)}. Confira se o ESP32 está ligado e conectado ao Wi-Fi.`;
+    // O firmware só envia quando consegue medir: silêncio pode ser a placa desligada, o Wi-Fi ou o sensor sem eco.
+    frase = `A última leitura chegou ${haQuanto(ultima.quando, agora)}. O ESP32 só envia quando consegue medir: confira se ele está ligado, no Wi-Fi e com o sensor apontado para a água.`;
   } else if (ligado) frase = "O servidor respondeu. Esperando a primeira medida do sensor…";
   else if (negado) frase = "O navegador não deixou a página falar com o servidor do sensor.";
   else if (conexao === "procurando") frase = "Procurando o servidor do sensor…";
