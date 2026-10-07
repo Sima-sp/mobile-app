@@ -7,6 +7,10 @@
 //   clima o app espera a cidade assentar e refaz uma vez só.
 // O caminho mais rápido depende só da partida e da chegada, então fica guardado e não é pedido de
 // novo a cada mudança de clima.
+//
+// A VIAGEM (tela de navegação, src/telas/Viagem.jsx) guarda uma cópia da rota escolhida no
+// momento de "Começar viagem". Durante a viagem a rota daqui não é refeita: quem cuida de mudar o
+// caminho no meio da viagem é a própria tela, que troca a cópia com `trocarRotaDaViagem`.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePontos } from "../dados/PontosContexto";
@@ -39,6 +43,7 @@ export function ProvedorRotas({ children }) {
   const [escolhida, escolher] = useState("segura");
   const [estado, setEstado] = useState(ESTADO_VAZIO);
   const [tentativa, setTentativa] = useState(0);
+  const [viagemEmCurso, setViagemEmCurso] = useState(null);
 
   // O cálculo roda depois, fora do desenho: lê sempre os pontos mais recentes.
   const recentes = useRef({ pontos, agora });
@@ -100,6 +105,17 @@ export function ProvedorRotas({ children }) {
     setDestino(origem);
   }, [origem, destino]);
   const tentarDeNovo = useCallback(() => setTentativa((n) => n + 1), []);
+  // `partida` numera as viagens começadas (cada uma tem um número novo, mesmo depois de a anterior
+  // ter sido encerrada); `troca` conta as mudanças de caminho dentro da mesma viagem.
+  const viagensComecadas = useRef(0);
+  const iniciarViagem = useCallback((rota, lugarDeChegada) => {
+    viagensComecadas.current += 1;
+    setViagemEmCurso({ rota, destino: lugarDeChegada, partida: viagensComecadas.current, troca: 0 });
+  }, []);
+  const trocarRotaDaViagem = useCallback((rota) => {
+    setViagemEmCurso((anterior) => (anterior ? { ...anterior, rota, troca: anterior.troca + 1 } : anterior));
+  }, []);
+  const encerrarViagem = useCallback(() => setViagemEmCurso(null), []);
 
   // O resultado só vale para a viagem atual: ao trocar o destino, o caminho antigo some na hora.
   const doMomento = estado.viagem === viagem ? estado : { ...ESTADO_VAZIO, fase: viagem && ativa ? "calculando" : "parada" };
@@ -115,8 +131,10 @@ export function ProvedorRotas({ children }) {
     escolhida: temDuasOpcoes ? escolhida : "segura",
     escolher,
     tentarDeNovo,
+    viagem: viagemEmCurso, iniciarViagem, trocarRotaDaViagem, encerrarViagem,
   }), [origem, destino, definirOrigem, definirDestino, inverter, ativa, doMomento.fase, doMomento.resultado, doMomento.erro,
-    doMomento.atualizando, climaMudando, temDuasOpcoes, escolhida, tentarDeNovo]);
+    doMomento.atualizando, climaMudando, temDuasOpcoes, escolhida, tentarDeNovo, viagemEmCurso, iniciarViagem, trocarRotaDaViagem,
+    encerrarViagem]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
@@ -127,6 +145,8 @@ export function ProvedorRotas({ children }) {
  *   ativa: boolean, definirAtiva: Function,
  *   fase: "parada"|"calculando"|"pronta"|"erro", resultado: object|null, erro: string|null, atualizando: boolean,
  *   escolhida: "segura"|"rapida", escolher: Function, tentarDeNovo: Function,
+ *   viagem: { rota: object, destino: object, partida: number, troca: number }|null,
+ *   iniciarViagem: (rota: object, destino: object) => void, trocarRotaDaViagem: (rota: object) => void, encerrarViagem: () => void,
  * }}
  */
 export function useRotas() {

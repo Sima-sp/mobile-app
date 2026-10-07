@@ -146,6 +146,51 @@ Para trocar de servidor: `VITE_ROTAS_URL` e `VITE_ENDERECOS_URL` no `.env.local`
 destino da rota (e o texto digitado na busca) são enviados a esses serviços. Para um app de
 produção, o certo é ter um servidor de rotas próprio: o público é emprestado e tem esses limites.
 
+## Viagem (navegação passo a passo)
+
+Com a rota no mapa, o cartão tem o botão **Começar viagem**. Ele abre a tela de viagem (endereço
+`#/viagem`), no padrão dos apps de trânsito:
+
+- **No alto**, a próxima manobra: a seta, a distância até ela ("350 m") e a rua em que se entra.
+  Uma linha menor adianta a manobra seguinte ("Depois").
+- **No mapa**, o carro (uma seta azul) anda sobre o caminho, com a câmera atrás dele, inclinada e
+  girando nas curvas. Tocar no mapa solta a câmera, e aparece o botão **Centralizar**.
+- **Embaixo**, quanto falta (tempo e distância), a hora de chegada e o botão **Sair**, que volta ao
+  cartão da rota. Ao chegar, a faixa diz "Você chegou" e o botão vira **Concluir**.
+
+**A viagem é simulada.** O carro anda sozinho, na velocidade média que o serviço de rotas calculou,
+e a tela diz isso ("Viagem simulada"). Os botões 1×, 5× e 15× mudam a velocidade: 1× é o tempo
+real; 5× é o padrão, bom para mostrar; 15× percorre a cidade em cerca de um minuto. O app ainda
+não acompanha o GPS do aparelho (ver "O que ainda não existe").
+
+**O que é do SIMA:** se, no meio da viagem, um bueiro do caminho que falta entra em risco, a tela
+avisa ("Bueiro MO-06 em risco à frente"), o carro para um instante e o app pede um caminho novo a
+partir de onde ele está, desviando desse bueiro ("Nova rota: desvia de 1 bueiro em risco"). Sem
+desvio possível, o aviso continua na tela. Na demonstração, é só trocar o clima durante a viagem
+(o controle do clima fica na tela, e as teclas 1 a 4 continuam valendo); o app espera a chuva
+terminar de atravessar a cidade antes de refazer o caminho. O risco que já existia quando a
+viagem começou não refaz nada: a pessoa escolheu aquele caminho vendo o aviso no cartão.
+
+Como é feito:
+
+- `src/rotas/viagem.js` faz as contas, sem tela: dado o caminho e quantos metros já foram
+  percorridos, devolve onde o carro está, para onde aponta, a próxima manobra e quanto falta.
+  É testado em `viagem.test.js`.
+- `src/rotas/servico.js` devolve, junto com a rota, as manobras do Valhalla (tipo, frase em
+  português, rua, tempo e o ponto do caminho onde cada uma acontece).
+- `src/telas/Viagem.jsx` é a tela: faz o carro andar a cada quadro, desenha a faixa e o painel, e
+  cuida do desvio no meio da viagem.
+- `src/mapa/MapaBase.jsx` ganhou os comandos de câmera da viagem. Fora dela o mapa continua com o
+  norte para cima e visto de cima; os gestos de girar e inclinar seguem desligados.
+- Com "menos movimento" ligado (no aparelho ou no Menu), a câmera não inclina nem gira: o mapa
+  fica de cima, com o norte para cima, e só acompanha o carro.
+- A tela não apaga durante a viagem, nos aparelhos que deixam (Wake Lock).
+
+Conferido em 07/10/2026 com um serviço de rotas de mentira (o caminho e as manobras no formato do
+Valhalla): começar, manobras mudando, arrastar e centralizar, trocar o clima e receber a nova rota,
+chegar, concluir, sair e Esc, em celular (390 e 360 px) e notebook, nos dois temas e com menos
+movimento. **Não conferido:** uma viagem com o serviço de rotas de verdade e num celular de verdade.
+
 ## O sensor na previsão
 
 No SIMA o sensor não é só um medidor: a leitura dele **entra na conta da chance**. Na
@@ -526,14 +571,15 @@ src/
     geometria.js           contas de distância, traçado compactado e área a evitar
     servico.js             conversa com o serviço de rotas (Valhalla) e a busca de endereço (Photon)
     lugares.js             lugares conhecidos oferecidos como atalho
-    RotaContexto.jsx       partida, chegada e resultado; refaz a rota quando o risco muda (useRotas)
+    RotaContexto.jsx       partida, chegada e resultado; refaz a rota quando o risco muda; guarda a viagem em curso (useRotas)
     useEnderecos.js        busca de endereço enquanto a pessoa digita
     planejar.test.js       testes da regra, sem internet
+    viagem.js              a regra da tela de viagem: onde o carro está, a próxima manobra e quanto falta (e o teste)
   preferencias/
     PreferenciasContexto.jsx   tema, animações e modo vitrine (usePreferencias)
   mapa/
     estiloMapa.js          estilo do MapLibre montado com os tokens do tema
-    MapaBase.jsx           o mapa, as tampas (marcadores) e o desenho da rota
+    MapaBase.jsx           o mapa, as tampas (marcadores), o desenho da rota e a câmera da viagem
     ruasAfetadas.js        quais ruas pintar: as dos bueiros em nível alto ou crítico (e o teste)
     agrupar.js             junta bueiros próximos conforme o zoom (e agrupar.test.js)
   componentes/
@@ -546,6 +592,7 @@ src/
   telas/
     Mapa.jsx               mapa, avisos (dados e região), clima da demonstração, barra de busca, cartão do bueiro e modo rota
     Rotas.jsx              partida e destino: resolve a partida e troca os dois
+    Viagem.jsx             navegação passo a passo: próxima manobra, carro no caminho e desvio no meio da viagem
     Bueiro.jsx             detalhe: medido × previsto
     Bairros.jsx            situação por bairro
     Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
@@ -610,7 +657,8 @@ hospedagem estática sem configurar o servidor.
 
 | Tela | Depende de |
 |---|---|
-| Navegação passo a passo (voz, "vire à direita") | Decisão do grupo; o serviço de rotas já devolve as instruções em português |
+| Viagem acompanhando o GPS do aparelho (hoje a viagem é simulada) | Ler a posição do aparelho durante a viagem e encaixá-la no caminho; testar na rua |
+| Instruções por voz na viagem | Decisão do grupo; o serviço de rotas já devolve as frases em português |
 | Rotas a pé ou de transporte | Fora do escopo: o grupo decidiu por rotas só de carro |
 | Reportar problema | Domínio de Ocorrência no backend |
 | Notificação dos avisos no celular | Alerta a partir de previsão no backend; notificações no aparelho |

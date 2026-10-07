@@ -9,9 +9,17 @@
 //   voarPara(lon, lat, zoom?)   centraliza num lugar
 //   enquadrarTudo()             afasta até caberem todos os bueiros (usado pelo modo vitrine)
 //   mostrarPosicao(lon, lat)    desenha o ponto azul do usuário e centraliza nele
+//   entrarNaViagem(posicao)     põe o carro no mapa e leva a câmera para trás dele (tela de viagem)
+//   moverCarro(posicao)         a cada quadro da viagem: move o carro e, se pedido, a câmera
+//   retomarCarro(posicao)       volta a câmera para o carro depois de a pessoa arrastar o mapa
+//   sairDaViagem()              tira o carro e devolve o mapa ao normal (norte para cima, visto de cima)
 //
 // Com a propriedade `rota` ({ ativa, outra, origem, destino }), desenha o caminho e enquadra o
-// mapa nele, respeitando a área coberta pelos controles e pelo cartão.
+// mapa nele, respeitando a área coberta pelos controles e pelo cartão. Com `rota.enquadrar`
+// falso (durante a viagem) o caminho é desenhado sem mexer na câmera.
+//
+// Fora da viagem o mapa fica sempre com o norte para cima e visto de cima. Só a viagem inclina e
+// gira a câmera, e por comando: os gestos de girar e inclinar continuam desligados.
 //
 // As ruas afetadas (o trecho de rua em volta dos bueiros em nível alto ou crítico) saem dos
 // próprios pontos: ver ruasAfetadas.js.
@@ -40,7 +48,7 @@ const TEXTOS = {
 };
 
 export const MapaBase = forwardRef(function MapaBase(
-  { pontos, agora, tema, selecionadoId, rota = null, aoTocarPonto, aoTocarFundo, medirAreaLivre },
+  { pontos, agora, tema, selecionadoId, rota = null, aoTocarPonto, aoTocarFundo, aoMexerNoMapa, medirAreaLivre },
   ref,
 ) {
   const caixa = useRef(null);
@@ -50,11 +58,12 @@ export const MapaBase = forwardRef(function MapaBase(
   // Zoom arredondado em passos de 0,25: é o que decide o agrupamento das tampas.
   const [zoom, setZoom] = useState(CONFIG.mapa.zoom);
   const marcadorEu = useRef(null);
+  const marcadorCarro = useRef(null);
   const jaEnquadrou = useRef(false);
 
   // As funções de toque mudam a cada desenho; o mapa é criado uma vez só e lê sempre a mais recente.
-  const toques = useRef({ aoTocarFundo, medirAreaLivre });
-  toques.current = { aoTocarFundo, medirAreaLivre };
+  const toques = useRef({ aoTocarFundo, aoMexerNoMapa, medirAreaLivre });
+  toques.current = { aoTocarFundo, aoMexerNoMapa, medirAreaLivre };
   // O mesmo para os pontos, lidos pelo comando enquadrarTudo.
   const pontosDeAgora = useRef(pontos);
   pontosDeAgora.current = pontos;
@@ -81,11 +90,12 @@ export const MapaBase = forwardRef(function MapaBase(
         maxBounds: CONFIG.mapa.limites,
         attributionControl: false,
         locale: TEXTOS,
-        // Mapa sempre com o norte para cima e visto de cima: menos gestos para errar no celular.
+        // Mapa com o norte para cima e visto de cima: menos gestos para errar no celular. Os
+        // gestos de girar e inclinar ficam desligados; só a tela de viagem inclina, por comando.
         dragRotate: false,
         pitchWithRotate: false,
         touchPitch: false,
-        maxPitch: 0,
+        maxPitch: 60,
       });
     } catch (erro) {
       console.error("[SIMA] Não foi possível criar o mapa.", erro);
@@ -104,6 +114,13 @@ export const MapaBase = forwardRef(function MapaBase(
       if (evento.originalEvent?.target?.closest?.(".mk")) return;
       toques.current.aoTocarFundo?.();
     });
+    // A pessoa pôs o dedo (ou o mouse, ou a rodinha) no mapa: a viagem para de seguir o carro.
+    // Tem de ser no primeiro toque, e não no começo do arrasto: enquanto a câmera é reposicionada
+    // a cada quadro, o MapLibre cancela os gestos em andamento e o arrasto nunca começaria.
+    const aoMexer = () => toques.current.aoMexerNoMapa?.();
+    instancia.on("mousedown", aoMexer);
+    instancia.on("touchstart", aoMexer);
+    instancia.on("wheel", aoMexer);
     instancia.on("error", (evento) => console.warn("[SIMA] Aviso do mapa:", evento.error?.message ?? evento));
     setMapa(instancia);
     return () => {
@@ -121,7 +138,7 @@ export const MapaBase = forwardRef(function MapaBase(
 
   // Rota nova: enquadra o caminho inteiro (as duas opções) na área livre do mapa.
   useEffect(() => {
-    if (!mapa || !rota?.ativa?.length) return;
+    if (!mapa || !rota?.ativa?.length || rota.enquadrar === false) return;
     const limites = new LngLatBounds();
     for (const ponto of rota.ativa) limites.extend(ponto);
     for (const ponto of rota.outra ?? []) limites.extend(ponto);
@@ -189,6 +206,34 @@ export const MapaBase = forwardRef(function MapaBase(
         marcadorEu.current.setLngLat([lon, lat]);
       }
       mapa.flyTo({ center: [lon, lat], zoom: Math.max(mapa.getZoom(), 15), duration: 900 });
+    },
+    entrarNaViagem({ lon, lat, rumo, zoom, inclinacao, margem }) {
+      if (!mapa) return;
+      if (!marcadorCarro.current) {
+        const no = document.createElement("div");
+        no.className = "mk-carro";
+        no.setAttribute("role", "img");
+        no.setAttribute("aria-label", "Onde o carro está");
+        no.innerHTML = '<svg viewBox="0 0 46 46" aria-hidden="true"><circle class="mk-carro-halo" cx="23" cy="23" r="21"/>'
+          + '<path class="mk-carro-seta" d="M23 8.5 34.5 35 23 29.2 11.5 35z"/></svg>';
+        // A seta gira junto com o mapa: aponta sempre para onde o caminho segue.
+        marcadorCarro.current = new Marker({ element: no, rotationAlignment: "map", pitchAlignment: "map" });
+      }
+      marcadorCarro.current.setLngLat([lon, lat]).setRotation(rumo).addTo(mapa);
+      mapa.easeTo({ center: [lon, lat], zoom, pitch: inclinacao, bearing: inclinacao ? rumo : 0, padding: margem, duration: 900 });
+    },
+    moverCarro({ lon, lat, rumo, rumoDaCamera, seguir }) {
+      if (!mapa || !marcadorCarro.current) return;
+      marcadorCarro.current.setLngLat([lon, lat]).setRotation(rumo);
+      if (seguir) mapa.jumpTo({ center: [lon, lat], bearing: rumoDaCamera });
+    },
+    retomarCarro({ lon, lat, rumo, zoom, inclinacao, margem }) {
+      mapa?.easeTo({ center: [lon, lat], zoom, pitch: inclinacao, bearing: inclinacao ? rumo : 0, padding: margem, duration: 500 });
+    },
+    sairDaViagem() {
+      marcadorCarro.current?.remove();
+      // Sem animação: quem enquadra o mapa a seguir (a rota inteira, por exemplo) já anima.
+      mapa?.jumpTo({ pitch: 0, bearing: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
     },
   }), [mapa]);
 

@@ -55,7 +55,12 @@ function comTempoLimite(sinal, ms) {
  * @param {[number, number]} pedido.destino  [lon, lat]
  * @param {Array} [pedido.areas]             áreas a evitar (anéis de [lon, lat])
  * @param {AbortSignal} [pedido.sinal]       para cancelar
- * @returns {Promise<{ caminho: Array<[number, number]>, minutos: number, km: number, trechos: Array<{nome: string, km: number}> }>}
+ * @returns {Promise<{ caminho: Array<[number, number]>, minutos: number, km: number,
+ *   trechos: Array<{nome: string, km: number}>,
+ *   manobras: Array<{ tipo: number, texto: string, rua: string, km: number, segundos: number, inicio: number, saida: number|null }> }>}
+ *   `manobras` é o passo a passo usado pela tela de viagem (src/rotas/viagem.js): `tipo` é o código
+ *   da manobra no Valhalla, `texto` a frase pronta em português, `rua` a via em que se entra,
+ *   `inicio` o índice do `caminho` onde a manobra acontece e `saida` a saída da rotatória.
  */
 export async function pedirRotaDeCarro({ origem, destino, areas = [], sinal }) {
   await esperarVaga(sinal);
@@ -93,6 +98,15 @@ export async function pedirRotaDeCarro({ origem, destino, areas = [], sinal }) {
     minutos: dados.trip.summary.time / 60,
     km: dados.trip.summary.length,
     trechos: (perna.maneuvers ?? []).map((m) => ({ nome: m.street_names?.[0] ?? "", km: m.length ?? 0 })),
+    manobras: (perna.maneuvers ?? []).map((m) => ({
+      tipo: m.type ?? 0,
+      texto: m.instruction ?? "",
+      rua: m.street_names?.[0] ?? m.begin_street_names?.[0] ?? "",
+      km: m.length ?? 0,
+      segundos: m.time ?? 0,
+      inicio: m.begin_shape_index ?? 0,
+      saida: m.roundabout_exit_count ?? null,
+    })),
   };
 }
 

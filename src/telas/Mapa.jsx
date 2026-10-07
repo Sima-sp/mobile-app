@@ -9,6 +9,8 @@
 // src/telas/Rotas.jsx.
 // O ponto selecionado fica no endereço (/?ponto=ID), então dá para abrir o app direto num bueiro
 // por um link. Tocar em outro ponto troca o endereço sem empilhar histórico.
+// No endereço /viagem (botão "Começar viagem" do cartão da rota) o mapa vira a tela de navegação:
+// os controles saem e entra src/telas/Viagem.jsx, com a próxima manobra e o carro no caminho.
 // Com o modo vitrine ligado no Menu, o mapa passeia sozinho quando ninguém mexe (useVitrine.js).
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,8 +28,9 @@ import { useTelaLarga } from "../componentes/ganchos";
 import { useArrastarVertical } from "../componentes/arrastar";
 import { useEsc } from "../componentes/Tela";
 import { useVitrine, vitrinePedidaNoEndereco } from "./useVitrine";
+import { Viagem } from "./Viagem";
 import {
-  IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
+  IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconeNavegar, IconePessoa, IconeRota,
   IconeSeta, IconeSol, IconeTempestade,
 } from "../componentes/Icones";
 
@@ -55,6 +58,7 @@ export default function Mapa() {
 
   const naRaiz = local.pathname === "/";
   const emRota = local.pathname === "/rota";
+  const emViagem = local.pathname === "/viagem";
   // Com a tela de um bueiro aberta ao lado (tela larga), o mesmo ponto fica marcado no mapa.
   const idSelecionado = naRaiz ? parametros.get("ponto") : rotaBueiro?.params.id ?? null;
   const selecionado = idSelecionado ? pontos.find((p) => p.id === idSelecionado) ?? null : null;
@@ -72,9 +76,12 @@ export default function Mapa() {
   }, [recado]);
 
   // No modo rota, tocar num bueiro abre a tela dele (voltar devolve à rota); no mapa comum, o cartão.
-  const selecionar = (id) => (emRota
-    ? navegar(`/bueiro/${encodeURIComponent(id)}`)
-    : navegar({ pathname: "/", search: `?ponto=${encodeURIComponent(id)}` }, { replace: naRaiz }));
+  // Durante a viagem o toque não faz nada: abrir outra tela encerraria a navegação.
+  const selecionar = (id) => {
+    if (emViagem) return;
+    if (emRota) navegar(`/bueiro/${encodeURIComponent(id)}`);
+    else navegar({ pathname: "/", search: `?ponto=${encodeURIComponent(id)}` }, { replace: naRaiz });
+  };
   const fecharCartao = () => {
     if (cartaoAberto) navegar("/", { replace: true });
   };
@@ -92,14 +99,42 @@ export default function Mapa() {
   const sairDaRota = () => navegar("/", { replace: true });
   useEsc(sairDaRota, emRota);
 
+  // Viagem: começa pelo cartão da rota, com a rota que está em destaque. Quem chega a /viagem sem
+  // viagem começada (recarregou a página, por exemplo) volta ao cartão da rota.
+  const { viagem, iniciarViagem, encerrarViagem } = rotas;
+  const [seguindo, setSeguindo] = useState(true);
+  const comecarViagem = (rota) => iniciarViagem(rota, rotas.destino);
+  // A tela de viagem abre depois de a viagem estar guardada: assim /viagem nunca fica sem ela.
+  const partidaAberta = useRef(0);
+  const estavaEmViagem = useRef(false);
+  useEffect(() => {
+    if (viagem && viagem.partida !== partidaAberta.current) {
+      partidaAberta.current = viagem.partida;
+      navegar("/viagem");
+      return;
+    }
+    if (emViagem && !viagem) navegar("/rota", { replace: true });
+    // Saiu da tela de viagem por qualquer caminho (botão, Esc, voltar do navegador): a viagem acaba.
+    if (estavaEmViagem.current && !emViagem && viagem) encerrarViagem();
+    estavaEmViagem.current = emViagem;
+  }, [emViagem, viagem, encerrarViagem, navegar]);
+  const sairDaViagem = () => navegar("/rota", { replace: true });
+  const concluirViagem = () => navegar("/", { replace: true });
+  useEsc(sairDaViagem, emViagem);
+
   // O que o mapa desenha no modo rota: o caminho escolhido em destaque e a outra opção em cinza.
+  // Na viagem, só o caminho que está sendo seguido, sem mexer na câmera (ela segue o carro).
   const { resultado, escolhida, origem: partida, destino: chegada } = rotas;
   const rotaNoMapa = useMemo(() => {
+    if (emViagem && viagem) {
+      const caminho = viagem.rota.caminho;
+      return { ativa: caminho, outra: null, origem: caminho[0], destino: [viagem.destino.lon, viagem.destino.lat], enquadrar: false };
+    }
     if (!emRota || !resultado || !partida || !chegada) return null;
     const ativa = resumoDaRota(resultado, escolhida).rota;
     const outra = resultado.segura && resultado.segura !== resultado.rapida ? (ativa === resultado.segura ? resultado.rapida : resultado.segura) : null;
     return { ativa: ativa.caminho, outra: outra?.caminho ?? null, origem: [partida.lon, partida.lat], destino: [chegada.lon, chegada.lat] };
-  }, [emRota, resultado, escolhida, partida, chegada]);
+  }, [emRota, emViagem, viagem, resultado, escolhida, partida, chegada]);
 
   // O cartão acompanha o dedo, como as folhas do iPhone: puxar para baixo fecha; puxar para cima
   // abre a tela completa do bueiro; um arrasto curto volta ao lugar.
@@ -123,7 +158,7 @@ export default function Mapa() {
   const climas = demo?.climas;
   const definirClima = demo?.definirClima;
   useEffect(() => {
-    if (!climas || !(naRaiz || emRota)) return undefined;
+    if (!climas || !(naRaiz || emRota || emViagem)) return undefined;
     const aoApertar = (evento) => {
       const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(evento.target?.tagName ?? "");
       if (digitando || evento.ctrlKey || evento.metaKey || evento.altKey) return;
@@ -132,7 +167,7 @@ export default function Mapa() {
     };
     document.addEventListener("keydown", aoApertar);
     return () => document.removeEventListener("keydown", aoApertar);
-  }, [climas, definirClima, naRaiz, emRota]);
+  }, [climas, definirClima, naRaiz, emRota, emViagem]);
 
   function localizar() {
     if (!navigator.geolocation) {
@@ -152,7 +187,7 @@ export default function Mapa() {
   // para aquela visita, por ?vitrine=1 no endereço (é como a página do projeto mostra o app).
   const [vitrinePedida] = useState(vitrinePedidaNoEndereco);
   const vitrine = useVitrine({ ligada: (vitrineLigada || vitrinePedida) && Boolean(demo), comecarLogo: vitrinePedida,
-    bloqueada: apresentacao.aberta, mapaRef, pontos, agora, demo, navegar });
+    bloqueada: apresentacao.aberta || emViagem, mapaRef, pontos, agora, demo, navegar });
 
   // "Usar minha localização", no último passo da apresentação de primeiro uso.
   const pedido = apresentacao.pedidoDeLocalizacao;
@@ -163,7 +198,7 @@ export default function Mapa() {
 
   // No celular, com outra tela por cima, o mapa sai do alcance do teclado e do leitor de tela.
   // O mesmo vale enquanto a apresentação de primeiro uso está aberta.
-  const coberto = (!naRaiz && !emRota && !telaLarga) || apresentacao.aberta;
+  const coberto = (!naRaiz && !emRota && !emViagem && !telaLarga) || apresentacao.aberta;
 
   return (
     <section className="mp" aria-label="Mapa de risco" inert={coberto}>
@@ -176,6 +211,7 @@ export default function Mapa() {
         rota={rotaNoMapa}
         aoTocarPonto={selecionar}
         aoTocarFundo={fecharCartao}
+        aoMexerNoMapa={() => { if (emViagem) setSeguindo(false); }}
         medirAreaLivre={() => ({
           topo: topoRef.current?.getBoundingClientRect().bottom ?? 110,
           cartao: ((emRota ? painelRef.current : cartaoRef.current)?.offsetHeight ?? 0) + 16,
@@ -183,7 +219,12 @@ export default function Mapa() {
         })}
       />
 
-      <div className="mp-top" ref={topoRef}>
+      {emViagem && viagem ? (
+        <Viagem mapaRef={mapaRef} seguindo={seguindo} aoSeguir={setSeguindo} aoSair={sairDaViagem} aoConcluir={concluirViagem}
+          clima={demo ? <SeletorDeClima demo={demo} /> : null} />
+      ) : null}
+
+      <div className="mp-top" ref={topoRef} hidden={emViagem}>
         <div className="mp-esq">
           <div className="mp-linha">
             <button type="button" className="lg lg-round" onClick={() => navegar("/menu")} aria-label="Abrir menu e configurações">
@@ -211,7 +252,7 @@ export default function Mapa() {
         </button>
       </div>
 
-      <div ref={barraRef} className={`lg mbar ${cartaoAberto || emRota ? "mbar-oculta" : ""}`} inert={cartaoAberto || emRota}>
+      <div ref={barraRef} className={`lg mbar ${cartaoAberto || emRota || emViagem ? "mbar-oculta" : ""}`} inert={cartaoAberto || emRota || emViagem}>
         <span className="grabber" aria-hidden="true" />
         <button type="button" className="mbar-field" onClick={() => navegar("/busca")} aria-label="Buscar um lugar para ir, um bueiro ou um bairro">
           <IconeBusca />
@@ -226,7 +267,7 @@ export default function Mapa() {
         aoVerBueiro={(id) => navegar(`/bueiro/${encodeURIComponent(id)}`)} aoVerRotas={() => navegar("/rotas")} />
 
       {emRota && !semViagem ? (
-        <PainelRota refPainel={painelRef} rotas={rotas} aoFechar={sairDaRota} aoTrocar={() => navegar("/rotas")} />
+        <PainelRota refPainel={painelRef} rotas={rotas} aoFechar={sairDaRota} aoTrocar={() => navegar("/rotas")} aoComecar={comecarViagem} />
       ) : null}
     </section>
   );
@@ -333,8 +374,9 @@ const COR_DO_TOM = { 1: "var(--r1)", 3: "var(--r3)", 4: "var(--r4)" };
 /**
  * Cartão do modo rota: tempo e distância, se a rota é segura, quanto ela custa a mais que o
  * caminho mais rápido e, quando há duas opções, a troca entre elas. O caminho fica no mapa.
+ * "Começar viagem" abre a navegação passo a passo (src/telas/Viagem.jsx) pela rota em destaque.
  */
-function PainelRota({ refPainel, rotas, aoFechar, aoTrocar }) {
+function PainelRota({ refPainel, rotas, aoFechar, aoTrocar, aoComecar }) {
   const { origem, destino, fase, resultado, erro, atualizando, escolhida, escolher, tentarDeNovo } = rotas;
   const resumo = resultado ? resumoDaRota(resultado, escolhida) : null;
   const vias = resumo ? viasPrincipais(resumo.rota.trechos) : [];
@@ -381,12 +423,18 @@ function PainelRota({ refPainel, rotas, aoFechar, aoTrocar }) {
         </div>
       ) : null}
 
-      <div className="ms-acoes">
+      <div className="ms-acoes rt-acoes-rota">
         {fase === "erro" ? <button type="button" className="btn btn-bone ms-acao" onClick={tentarDeNovo}>Tentar de novo</button> : null}
         <button type="button" className="btn btn-iron ms-acao rt-viagem" onClick={aoTrocar} aria-label={`De ${origem.nome} para ${destino.nome}. Trocar partida ou destino`}>
           <span className="rt-viagem-texto">{origem.nome} → {destino.nome}</span>
           <span className="rt-viagem-acao">Trocar</span>
         </button>
+        {/* A viagem segue a rota que está em destaque (a segura ou a mais rápida, conforme a escolha). */}
+        {resumo ? (
+          <button type="button" className="btn btn-bone ms-acao rt-comecar" onClick={() => aoComecar(resumo.rota)}>
+            <IconeNavegar pequeno />Começar viagem
+          </button>
+        ) : null}
       </div>
     </section>
   );

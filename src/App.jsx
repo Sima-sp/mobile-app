@@ -43,6 +43,8 @@ export default function App() {
               <Route path="/" element={null} />
               {/* Modo rota: nenhuma tela por cima; o próprio mapa mostra o caminho e o cartão. */}
               <Route path="/rota" element={null} />
+              {/* Viagem: a navegação passo a passo, também desenhada pelo próprio mapa. */}
+              <Route path="/viagem" element={null} />
               <Route path="/busca" element={<Busca />} />
               <Route path="/bairros" element={<Bairros />} />
               <Route path="/bueiro/:id" element={<Bueiro />} />

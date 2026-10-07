@@ -35,3 +35,20 @@ export const IconeInfo = (p) => <Icone {...p}><circle cx="12" cy="12" r="8.4" />
 export const IconeFaisca = (p) => <Icone {...p}><path d="M11 4.5l1.6 4.4 4.4 1.6-4.4 1.6L11 16.5l-1.6-4.4L5 10.5l4.4-1.6z" /><path d="M18 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></Icone>;
 export const IconeRepetir = (p) => <Icone {...p}><path d="M5 12a7 7 0 0 1 12-4.9L19 9M19 4.5V9h-4.5M19 12a7 7 0 0 1-12 4.9L5 15M5 19.5V15h4.5" /></Icone>;
 export const IconeSensor = (p) => <Icone {...p}><rect x="7" y="4" width="10" height="8" rx="2" /><path d="M10 12v5M14 12v5" /><path d="M5 20c1.2-1 2.3-1 3.5 0s2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0" /></Icone>;
+// Viagem (navegação passo a passo).
+export const IconeNavegar = (p) => <Icone {...p}><path d="M12 3.8 18.8 20 12 16.6 5.2 20z" /></Icone>;
+
+/** Desenho de cada manobra, pelo nome que src/rotas/viagem.js devolve em `seta`. */
+const SETAS = {
+  frente: <path d="M12 20V5M6.5 10.5 12 5l5.5 5.5" />,
+  direita: <path d="M7 20v-7a3 3 0 0 1 3-3h8M14 6l4 4-4 4" />,
+  esquerda: <path d="M17 20v-7a3 3 0 0 0-3-3H6M10 6l-4 4 4 4" />,
+  "leve-direita": <path d="M8 20v-6a4 4 0 0 1 1.2-2.8L16 4.5M10 4.5h6v6" />,
+  "leve-esquerda": <path d="M16 20v-6a4 4 0 0 0-1.2-2.8L8 4.5M14 4.5H8v6" />,
+  "fechada-direita": <path d="M7 20V8a2 2 0 0 1 3.4-1.4L17 13M17 7.5V13h-5.5" />,
+  "fechada-esquerda": <path d="M17 20V8a2 2 0 0 0-3.4-1.4L7 13M7 7.5V13h5.5" />,
+  retorno: <path d="M7 20V9a4.5 4.5 0 0 1 9 0v6M12.5 11.5 16 15l3.5-3.5" />,
+  rotatoria: <><circle cx="11" cy="11" r="4" /><path d="M11 20v-5M14 8l4.5-4.5M14.5 3.5h4v4" /></>,
+  chegada: <><path d="M12 21s-6.5-5.7-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.3 12 21 12 21z" /><circle cx="12" cy="10.4" r="2.3" /></>,
+};
+export const IconeManobra = ({ seta, ...p }) => <Icone {...p}>{SETAS[seta] ?? SETAS.frente}</Icone>;
