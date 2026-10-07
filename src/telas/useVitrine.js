@@ -10,6 +10,12 @@
 //      e quem tocou continua dali.
 //   4. Enquanto o modo estiver ligado, o app pede ao aparelho para não apagar a tela (Wake Lock).
 //      Nem todo navegador atende; nesse caso vale a configuração de tela do próprio aparelho.
+//
+// O app dentro de outra página: a página do projeto (a landing) mostra o app num telefone e o
+// abre com `?vitrine=1` no endereço. Nesse caso o modo vale só para aquela visita (não muda a
+// preferência guardada), o passeio começa logo depois de o app abrir e a apresentação de
+// primeiro uso não aparece. A página de fora pode mandar o passeio parar com
+// `janela.postMessage("sima:usar", "*")`, que vale como um toque.
 
 import { useEffect, useRef, useState } from "react";
 import { CENAS, ESPERA_MS, escolherBueiro } from "../dados/vitrine";
@@ -18,6 +24,19 @@ import { CENAS, ESPERA_MS, escolherBueiro } from "../dados/vitrine";
 const SINAIS_DE_USO = ["pointerdown", "keydown", "wheel", "touchstart"];
 /** Aviso que o Menu manda para o passeio começar sem esperar. */
 const PEDIDO_DE_INICIO = "sima:vitrine-comecar";
+/** Mensagem que a página de fora (a landing) manda para valer como um toque: o passeio para. */
+const MENSAGEM_DE_USO = "sima:usar";
+/** Com `?vitrine=1`, quanto esperar o app abrir antes de começar o passeio. */
+const ESPERA_DO_PEDIDO_MS = 2500;
+
+/** true se o app foi aberto com `?vitrine=1` (é como a landing o mostra). */
+export function vitrinePedidaNoEndereco() {
+  try {
+    return new URLSearchParams(window.location.search).get("vitrine") === "1";
+  } catch {
+    return false;
+  }
+}
 
 /** Começa o passeio agora (botão "Começar agora" do Menu). Só tem efeito com o modo ligado. */
 export function comecarVitrine() {
@@ -26,7 +45,8 @@ export function comecarVitrine() {
 
 /**
  * @param {object} opcoes
- * @param {boolean} opcoes.ligada      o modo está ligado no Menu e o app está na demonstração
+ * @param {boolean} opcoes.ligada      o modo está ligado (no Menu ou pelo endereço) e o app está na demonstração
+ * @param {boolean} [opcoes.comecarLogo]  começa o passeio assim que o app abrir, sem esperar a falta de toque
  * @param {boolean} opcoes.bloqueada   algo na tela pede atenção (a apresentação de primeiro uso): não começa
  * @param {object} opcoes.mapaRef      ref do MapaBase (usa enquadrarTudo)
  * @param {Array} opcoes.pontos        os bueiros de agora
@@ -35,7 +55,7 @@ export function comecarVitrine() {
  * @param {Function} opcoes.navegar    o navigate do roteador
  * @returns {{ rodando: boolean }}     true enquanto o app está passeando sozinho
  */
-export function useVitrine({ ligada, bloqueada, mapaRef, pontos, agora, demo, navegar }) {
+export function useVitrine({ ligada, comecarLogo = false, bloqueada, mapaRef, pontos, agora, demo, navegar }) {
   const [rodando, setRodando] = useState(false);
   // Os relógios leem sempre os valores mais recentes, sem recomeçar a cada desenho da tela.
   const atual = useRef(null);
@@ -62,15 +82,24 @@ export function useVitrine({ ligada, bloqueada, mapaRef, pontos, agora, demo, na
       if (podeComecar()) setRodando(true);
       else armar();
     };
+    // A página de fora (a landing) avisa quando a pessoa escolhe uma tela por lá: vale como toque.
+    const aoReceberMensagem = (evento) => {
+      if (evento.data === MENSAGEM_DE_USO) aoMexer();
+    };
     SINAIS_DE_USO.forEach((sinal) => window.addEventListener(sinal, aoMexer, { capture: true, passive: true }));
     window.addEventListener(PEDIDO_DE_INICIO, aoPedirInicio);
+    window.addEventListener("message", aoReceberMensagem);
     armar();
+    // Aberto com ?vitrine=1: começa assim que o mapa teve tempo de aparecer.
+    const inicio = comecarLogo ? setTimeout(aoPedirInicio, ESPERA_DO_PEDIDO_MS) : null;
     return () => {
       clearTimeout(relogio);
+      clearTimeout(inicio);
       SINAIS_DE_USO.forEach((sinal) => window.removeEventListener(sinal, aoMexer, { capture: true }));
       window.removeEventListener(PEDIDO_DE_INICIO, aoPedirInicio);
+      window.removeEventListener("message", aoReceberMensagem);
     };
-  }, [ligada]);
+  }, [ligada, comecarLogo]);
 
   // A apresentação de primeiro uso abriu no meio do passeio: para.
   useEffect(() => {

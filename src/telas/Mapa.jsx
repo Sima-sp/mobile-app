@@ -25,7 +25,7 @@ import { useApresentacao } from "../componentes/PrimeiroUso";
 import { useTelaLarga } from "../componentes/ganchos";
 import { useArrastarVertical } from "../componentes/arrastar";
 import { useEsc } from "../componentes/Tela";
-import { useVitrine } from "./useVitrine";
+import { useVitrine, vitrinePedidaNoEndereco } from "./useVitrine";
 import {
   IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
   IconeSeta, IconeSol, IconeTempestade,
@@ -148,8 +148,11 @@ export default function Mapa() {
     );
   }
 
-  // Modo vitrine: só na demonstração (é ela que tem o clima para trocar).
-  const vitrine = useVitrine({ ligada: vitrineLigada && Boolean(demo), bloqueada: apresentacao.aberta, mapaRef, pontos, agora, demo, navegar });
+  // Modo vitrine: só na demonstração (é ela que tem o clima para trocar). Liga pelo Menu ou, só
+  // para aquela visita, por ?vitrine=1 no endereço (é como a página do projeto mostra o app).
+  const [vitrinePedida] = useState(vitrinePedidaNoEndereco);
+  const vitrine = useVitrine({ ligada: (vitrineLigada || vitrinePedida) && Boolean(demo), comecarLogo: vitrinePedida,
+    bloqueada: apresentacao.aberta, mapaRef, pontos, agora, demo, navegar });
 
   // "Usar minha localização", no último passo da apresentação de primeiro uso.
   const pedido = apresentacao.pedidoDeLocalizacao;

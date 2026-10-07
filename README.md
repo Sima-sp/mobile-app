@@ -398,6 +398,12 @@ passeia sozinho quando ninguém está mexendo, e para no primeiro toque. Vem des
   rua desenhada), então os pedaços do mapa desses lugares ficam guardados no aparelho depois da
   primeira volta e o passeio não depende da internet.
 
+- **Dentro da página do projeto:** a landing mostra o app num telefone abrindo-o com
+  `?vitrine=1` no endereço. Assim o modo vale só para aquela visita (não muda a preferência
+  guardada), o passeio começa logo depois de o app abrir e a apresentação de primeiro uso não
+  aparece. A página de fora troca de tela pelo endereço (`#/ia`, `#/rotas`...) e manda o passeio
+  parar com `postMessage("sima:usar", "*")`.
+
 O roteiro e a escolha do bueiro estão em `src/dados/vitrine.js` (com testes); o relógio, a
 detecção do toque e os comandos do mapa, em `src/telas/useVitrine.js`. A escolha fica guardada
 com as outras preferências do aparelho (`sima.preferencias`).

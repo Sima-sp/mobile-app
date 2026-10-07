@@ -12,6 +12,7 @@ import { usePontos } from "../dados/PontosContexto";
 import { corNivel, rotuloNivel } from "../dados/niveis";
 import { Tampa } from "./Tampa";
 import { IconeBusca, IconeChuva, IconeChuvisco, IconeRota, IconeSol, IconeTempestade } from "./Icones";
+import { vitrinePedidaNoEndereco } from "../telas/useVitrine";
 
 const CHAVE = "sima.apresentacao";
 const Contexto = createContext(null);
@@ -31,7 +32,9 @@ function jaVista() {
  */
 export function ProvedorApresentacao({ children }) {
   const local = useLocation();
-  const [aberta, setAberta] = useState(() => local.pathname === "/" && !local.search && !jaVista());
+  // Não abre sozinha quando o app chega já num bueiro (/?ponto=...) nem quando é mostrado dentro da
+  // página do projeto (?vitrine=1 no endereço: ali quem conduz é o modo vitrine).
+  const [aberta, setAberta] = useState(() => local.pathname === "/" && !local.search && !jaVista() && !vitrinePedidaNoEndereco());
   const [pedidoDeLocalizacao, setPedido] = useState(0);
 
   const abrir = useCallback(() => setAberta(true), []);
