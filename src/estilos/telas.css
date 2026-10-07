@@ -388,3 +388,5 @@
 label.row { cursor: pointer; }
 /* Linha do Menu que é um link (leva a outra página), com a mesma cara das linhas que são botão. */
 a.row.mu-link, a.row.mu-link:hover { color: var(--bone-100); text-decoration: none; }
+/* Modo vitrine: o botão "Começar agora" do Menu. (No mapa, o aviso do passeio usa .mp-aviso.) */
+.mu-vitrine-agora { width: 100%; margin-top: 10px; border-radius: 25px; }

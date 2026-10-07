@@ -376,6 +376,32 @@ pergunta se a pessoa tocar no botão.
 - Quem chega por um link direto para um bueiro vê o bueiro, não a apresentação.
 - Pode ser revista em Menu → "Rever a apresentação". Esc ou "Pular" fecham.
 
+## Modo vitrine
+
+Para feiras: com o **modo vitrine** ligado (Menu → "Modo vitrine", só na demonstração), o app
+passeia sozinho quando ninguém está mexendo, e para no primeiro toque. Vem desligado.
+
+- **Quando começa:** depois de 45 segundos sem toque, tecla ou rolagem, em qualquer tela (ele
+  fecha o que estiver aberto e volta ao mapa). O botão "Começar agora", no Menu, começa na hora.
+  Não começa com a apresentação de primeiro uso aberta nem com o app em segundo plano.
+- **O que mostra** (uma volta dura 74 s e recomeça): sol → a chuva forte chegando, com a cidade
+  inteira e o aviso por região → um bueiro em risco de perto, com a rua pintada e o cartão
+  aberto → chuva extrema → um bueiro crítico de perto → o sol de volta. É a mesma história do
+  roteiro de quem apresenta.
+- **Quando para:** no primeiro toque, tecla ou rolagem. Nada é desfeito: o clima e o mapa ficam
+  como estavam e a pessoa continua dali. No mapa, o aviso "Modo vitrine · toque para usar o app"
+  fica à vista enquanto o passeio roda.
+- **Tela acesa:** ligado, o app pede ao aparelho para não apagar a tela (Wake Lock). Nem todo
+  navegador atende; deixe o aparelho na tomada e, se precisar, aumente o tempo de tela nas
+  configurações dele.
+- **Bueiros visitados:** sempre os mesmos para a mesma chuva (o de maior nível, entre os que têm
+  rua desenhada), então os pedaços do mapa desses lugares ficam guardados no aparelho depois da
+  primeira volta e o passeio não depende da internet.
+
+O roteiro e a escolha do bueiro estão em `src/dados/vitrine.js` (com testes); o relógio, a
+detecção do toque e os comandos do mapa, em `src/telas/useVitrine.js`. A escolha fica guardada
+com as outras preferências do aparelho (`sima.preferencias`).
+
 ## Cores e desenho
 
 A regra é a dos grandes apps de mapa (Google Maps, Apple Maps, Waze): **o fundo é neutro e a cor
@@ -478,6 +504,7 @@ src/
     bairros.js             resumo por bairro
     regioes.js             aviso por região: cobertura mínima, limiares e as frases
     simulador.js           simulador da tela da IA: lugares, cenários e explicações
+    vitrine.js             modo vitrine: as cenas do passeio e a escolha do bueiro visitado (e o teste)
     PontosContexto.jsx     guarda os pontos e atualiza sozinho (usePontos)
     modelo.test.js         testes das regras acima
     demo.test.js           testes da demonstração
@@ -497,7 +524,7 @@ src/
     useEnderecos.js        busca de endereço enquanto a pessoa digita
     planejar.test.js       testes da regra, sem internet
   preferencias/
-    PreferenciasContexto.jsx   tema e animações (usePreferencias)
+    PreferenciasContexto.jsx   tema, animações e modo vitrine (usePreferencias)
   mapa/
     estiloMapa.js          estilo do MapLibre montado com os tokens do tema
     MapaBase.jsx           o mapa, as tampas (marcadores) e o desenho da rota
@@ -518,7 +545,8 @@ src/
     Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
     Avisos.jsx             avisos por região
     ComoFunciona.jsx       como a IA funciona, com o simulador
-    Menu.jsx               atalhos, tema e ajustes
+    Menu.jsx               atalhos, tema, ajustes e a chave do modo vitrine
+    useVitrine.js          modo vitrine: espera a falta de toque, toca as cenas e para ao primeiro toque
     EmConstrucao.jsx       telas das próximas etapas e a tela Sobre
   estilos/
     base.css               tokens dos dois temas e componentes (vidro, listas, botões)

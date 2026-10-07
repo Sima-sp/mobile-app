@@ -1,4 +1,4 @@
-// Preferências do usuário guardadas no aparelho: tema e animações.
+// Preferências do usuário guardadas no aparelho: tema, animações e modo vitrine.
 // Nada daqui vai para o backend.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -50,6 +50,8 @@ export function ProvedorPreferencias({ children }) {
     const inicial = {
       tema: guardado.tema === "claro" || guardado.tema === "escuro" ? guardado.tema : temaDoSistema(),
       animacoes: ["ligadas", "reduzidas"].includes(guardado.animacoes) ? guardado.animacoes : "sistema",
+      // Modo vitrine (o app passeia sozinho quando ninguém mexe): desligado até alguém ligar no Menu.
+      vitrine: guardado.vitrine === true,
     };
     aplicarTema(inicial.tema);
     aplicarAnimacoes(inicial.animacoes);
@@ -83,7 +85,7 @@ export function ProvedorPreferencias({ children }) {
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 
-/** @returns {{ tema: "escuro"|"claro", animacoes: "sistema"|"ligadas"|"reduzidas", mudar: (parcial: object) => void }} */
+/** @returns {{ tema: "escuro"|"claro", animacoes: "sistema"|"ligadas"|"reduzidas", vitrine: boolean, mudar: (parcial: object) => void }} */
 export function usePreferencias() {
   const valor = useContext(Contexto);
   if (!valor) throw new Error("usePreferencias precisa estar dentro de <ProvedorPreferencias>.");

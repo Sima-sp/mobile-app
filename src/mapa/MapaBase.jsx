@@ -7,6 +7,7 @@
 //
 // Comandos disponíveis pela ref:
 //   voarPara(lon, lat, zoom?)   centraliza num lugar
+//   enquadrarTudo()             afasta até caberem todos os bueiros (usado pelo modo vitrine)
 //   mostrarPosicao(lon, lat)    desenha o ponto azul do usuário e centraliza nele
 //
 // Com a propriedade `rota` ({ ativa, outra, origem, destino }), desenha o caminho e enquadra o
@@ -54,6 +55,9 @@ export const MapaBase = forwardRef(function MapaBase(
   // As funções de toque mudam a cada desenho; o mapa é criado uma vez só e lê sempre a mais recente.
   const toques = useRef({ aoTocarFundo, medirAreaLivre });
   toques.current = { aoTocarFundo, medirAreaLivre };
+  // O mesmo para os pontos, lidos pelo comando enquadrarTudo.
+  const pontosDeAgora = useRef(pontos);
+  pontosDeAgora.current = pontos;
 
   const rotaGeo = useMemo(() => rotaParaGeoJson(rota), [rota]);
   // Os pontos mudam a toda hora (o relógio anda, a chuva da demonstração avança), mas as ruas só
@@ -164,6 +168,14 @@ export const MapaBase = forwardRef(function MapaBase(
   useImperativeHandle(ref, () => ({
     voarPara(lon, lat, zoom = 15) {
       mapa?.flyTo({ center: [lon, lat], zoom, duration: 900 });
+    },
+    enquadrarTudo() {
+      const todos = pontosDeAgora.current.filter((p) => Number.isFinite(p.lon) && Number.isFinite(p.lat));
+      if (!mapa || todos.length === 0) return;
+      const limites = new LngLatBounds();
+      for (const p of todos) limites.extend([p.lon, p.lat]);
+      // As mesmas margens do enquadramento inicial, mas com o mapa viajando até lá.
+      mapa.fitBounds(limites, { padding: { top: 120, bottom: 130, left: 30, right: 30 }, maxZoom: 14.5, duration: 1600 });
     },
     mostrarPosicao(lon, lat) {
       if (!mapa) return;

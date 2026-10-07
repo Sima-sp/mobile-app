@@ -11,12 +11,14 @@ import {
   IconeBairros, IconeFaisca, IconeInfo, IconeLua, IconeMais, IconeMapa, IconePessoa, IconeRepetir, IconeRota, IconeSensor, IconeSeta, IconeSino,
   IconeSol,
 } from "../componentes/Icones";
+import { ESPERA_MS } from "../dados/vitrine";
+import { comecarVitrine } from "./useVitrine";
 
 const VERSAO = "0.1";
 
 export default function Menu() {
   const navegar = useNavigate();
-  const { tema, animacoes, mudar } = usePreferencias();
+  const { tema, animacoes, vitrine, mudar } = usePreferencias();
   const { fonte, atualizadoEm, erro } = usePontos();
   const apresentacao = useApresentacao();
 
@@ -96,6 +98,25 @@ export default function Menu() {
       <p className="micro" style={{ padding: "8px 36px 0" }}>
         “Do aparelho” segue a configuração de acessibilidade do celular ou computador.
       </p>
+
+      {/* Modo vitrine: só na demonstração, que é onde há clima para trocar (src/telas/useVitrine.js). */}
+      {fonte === "demo" ? (
+        <>
+          <h2 className="grp-t" id="rotulo-vitrine">Modo vitrine</h2>
+          <div className="grp" style={{ padding: 10 }}>
+            <div className="seg mu-seg" role="group" aria-labelledby="rotulo-vitrine">
+              <button type="button" className={vitrine ? "" : "seg-on"} aria-pressed={!vitrine} onClick={() => mudar({ vitrine: false })}>Desligado</button>
+              <button type="button" className={vitrine ? "seg-on" : ""} aria-pressed={vitrine} onClick={() => mudar({ vitrine: true })}>Ligado</button>
+            </div>
+            {vitrine ? (
+              <button type="button" className="btn btn-bone mu-vitrine-agora" onClick={() => { navegar("/"); comecarVitrine(); }}>Começar agora</button>
+            ) : null}
+          </div>
+          <p className="micro" style={{ padding: "8px 36px 0" }}>
+            Para feiras: depois de {Math.round(ESPERA_MS / 1000)} segundos sem ninguém tocar, o app troca o clima e passeia pelo mapa sozinho. Para no primeiro toque. Ligado, o app tenta manter a tela acesa: deixe o aparelho na tomada.
+          </p>
+        </>
+      ) : null}
 
       <p className="micro mu-foot">SIMA · versão {VERSAO}<br />{origem}</p>
     </Tela>

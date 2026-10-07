@@ -9,6 +9,7 @@
 // src/telas/Rotas.jsx.
 // O ponto selecionado fica no endereço (/?ponto=ID), então dá para abrir o app direto num bueiro
 // por um link. Tocar em outro ponto troca o endereço sem empilhar histórico.
+// Com o modo vitrine ligado no Menu, o mapa passeia sozinho quando ninguém mexe (useVitrine.js).
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useMatch, useNavigate, useSearchParams } from "react-router";
@@ -24,6 +25,7 @@ import { useApresentacao } from "../componentes/PrimeiroUso";
 import { useTelaLarga } from "../componentes/ganchos";
 import { useArrastarVertical } from "../componentes/arrastar";
 import { useEsc } from "../componentes/Tela";
+import { useVitrine } from "./useVitrine";
 import {
   IconeBusca, IconeChuva, IconeChuvisco, IconeFechar, IconeLocalizar, IconeMenu, IconePessoa, IconeRota,
   IconeSeta, IconeSol, IconeTempestade,
@@ -33,7 +35,7 @@ const ICONE_DO_CLIMA = { sol: IconeSol, chuvisco: IconeChuvisco, "chuva-forte": 
 
 export default function Mapa() {
   const { pontos, agora, fonte, erro, carregando, simulacao, atualizadoEm, atualizar, demo } = usePontos();
-  const { tema } = usePreferencias();
+  const { tema, vitrine: vitrineLigada } = usePreferencias();
   const navegar = useNavigate();
   const local = useLocation();
   const [parametros] = useSearchParams();
@@ -146,6 +148,9 @@ export default function Mapa() {
     );
   }
 
+  // Modo vitrine: só na demonstração (é ela que tem o clima para trocar).
+  const vitrine = useVitrine({ ligada: vitrineLigada && Boolean(demo), bloqueada: apresentacao.aberta, mapaRef, pontos, agora, demo, navegar });
+
   // "Usar minha localização", no último passo da apresentação de primeiro uso.
   const pedido = apresentacao.pedidoDeLocalizacao;
   useEffect(() => {
@@ -193,6 +198,9 @@ export default function Mapa() {
             </button>
           ) : null}
           {recado ? <p className="lg mp-aviso" role="status">{recado}</p> : null}
+          {vitrine.rodando ? (
+            <p className="lg mp-aviso mp-vitrine" role="status"><span className="mp-aviso-dot" aria-hidden="true" />Modo vitrine · toque para usar o app</p>
+          ) : null}
         </div>
 
         <button type="button" className="lg lg-round" onClick={localizar} aria-label="Centralizar em mim">
