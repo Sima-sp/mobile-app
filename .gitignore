@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-painel/
 .env.local
 .env.*.local
 *.log

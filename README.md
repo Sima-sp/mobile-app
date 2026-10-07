@@ -20,6 +20,7 @@ npm run build     # gera a pasta dist/ (HTML/CSS/JS puro)
 npm run build:demo  # o mesmo, já em modo demonstração (para publicar a versão da feira)
 npm run preview   # serve a dist/ para conferir o build
 npm run ruas      # gera de novo o trecho de rua de cada ponto (precisa de internet; ver "Ruas afetadas")
+npm run painel    # gera o painel do sensor num arquivo só: dist-painel/sima-sensor.html (ver "Sensor ao vivo")
 ```
 
 Requer Node 20.19+ ou 22.12+. Sem configuração nenhuma o app abre com **dados de demonstração**.
@@ -187,17 +188,29 @@ sistema de verdade se comportar como a demonstração, a mesma conta precisa ent
 
 ## Sensor ao vivo
 
-`/sensor` (Menu → "Sensor ao vivo") mostra o **protótipo do sensor** funcionando, em tempo real:
-o nível da água num desenho do bueiro em corte, a distância medida e como aquele bueiro
-apareceria no mapa.
+O **painel do sensor** mostra o protótipo do sensor funcionando, em tempo real: o nível da água
+num desenho do bueiro em corte, a distância medida e como aquele bueiro apareceria no mapa.
+
+**É uma página separada do app** (`sensor.html`, código em `src/sensor/`): não tem mapa nem
+previsão, só o IoT. No computador ocupa a tela inteira (o desenho de um lado, a leitura do
+outro, e um botão "Tela cheia"); no celular vira uma coluna. No Menu do app, "Sensor ao vivo"
+abre essa página; o endereço antigo (`#/sensor`) também leva a ela.
+
+Há três jeitos de abrir, do mais garantido na bancada ao mais prático:
+
+| Jeito | Endereço | Precisa de |
+|---|---|---|
+| **Arquivo único dentro do servidor do sensor** | `http://localhost:3000/sima-sensor.html` (ou `http://ENDEREÇO-DO-COMPUTADOR:3000/sima-sensor.html` de qualquer aparelho da mesma rede) | Copiar `dist-painel/sima-sensor.html` (gerado por `npm run painel`) para a pasta `public` do servidor do sensor. Conecta sozinho, sem internet e sem permissão do navegador |
+| Página publicada | `https://sima-sp.github.io/mobile-app/sensor.html` | Internet, o servidor do sensor no mesmo computador e permitir o acesso à rede local quando o Chrome perguntar |
+| Na pasta do app | `npm run demo` e `http://localhost:5173/sensor.html` | Node instalado; aceita o servidor do sensor em outro computador (endereço em "Ajustes do sensor") |
 
 **O caminho da leitura.** O protótipo mede a distância do sensor até a água (em cm) e envia pelo
-Wi-Fi ao **servidor do sensor**, um programa em Node do grupo do IoT (porta 3000). A tela
+Wi-Fi ao **servidor do sensor**, um programa em Node do grupo do IoT (porta 3000). A página
 pergunta a última leitura a esse servidor uma vez por segundo:
 
 ```
 ESP32 ──Wi-Fi──▶ POST /api/leitura   { "device": "...", "distancia": 32.4 }
-tela  ─────────▶ GET  /api/leitura   a última leitura (ou null, se ainda não chegou nenhuma)
+painel ────────▶ GET  /api/leitura   a última leitura (ou null, se ainda não chegou nenhuma)
                  GET  /api/limites   { "zonaCega": 15, "critico": 20, "alerta": 30, "atencao": 45 }
 ```
 
@@ -242,37 +255,48 @@ Os limites vêm de `GET /api/limites`; sem resposta, valem os da tabela. Três c
    Se recebeu outro, troque o `SERVER_URL` e grave a placa de novo. Ligue o servidor do sensor
    (`node server.js`) **nesse mesmo computador, que é o que vai mostrar a tela**, e só então a
    placa. No monitor serial (115200) deve aparecer `Envio -> codigo HTTP: 200`.
-2. Abra o app no **Chrome** desse computador, vá em Menu → "Sensor ao vivo" e toque em
-   "Conectar ao sensor". A tela procura o servidor em `http://localhost:3000`.
-3. O Chrome pergunta se a página pode **acessar a rede local** (ou outros apps do dispositivo):
-   **permita**. Sem isso o pedido nem sai. Só pergunta uma vez.
-4. Nas próximas vezes a tela conecta sozinha naquele computador.
+2. Abra o painel nesse computador. Com o arquivo único na pasta `public` do servidor, é só abrir
+   `http://localhost:3000/sima-sensor.html`: ele conecta sozinho.
+3. Pela página publicada: abra no **Chrome**, toque em "Conectar ao sensor" (a página procura o
+   servidor em `http://localhost:3000`) e, quando o Chrome perguntar se a página pode **acessar
+   a rede local** (ou outros apps do dispositivo), **permita**. Sem isso o pedido nem sai. Só
+   pergunta uma vez, e nas próximas vezes a página conecta sozinha naquele computador.
+4. "Tela cheia" (ou F11) tira as barras do navegador.
 
-**Servidor em outro computador.** O app publicado é https e o servidor do sensor é http: fora
-do próprio computador, o navegador tende a bloquear o pedido. O caminho garantido é abrir o app
-por `npm run demo` (http://localhost:5173) e pôr o endereço do servidor em "Ajustes do sensor"
-(`192.168.0.10` vira `http://192.168.0.10:3000`). Num celular, use a simulação.
+**Servidor em outro computador.** A página publicada é https e o servidor do sensor é http: fora
+do próprio computador, o navegador tende a bloquear o pedido. O arquivo único resolve (a página
+e as leituras vêm do mesmo endereço); a outra saída é `npm run demo` com o endereço do servidor
+em "Ajustes do sensor" (`192.168.0.10` vira `http://192.168.0.10:3000`).
+
+**O arquivo único** (`npm run painel`). O Vite gera só o painel, com as fontes e os estilos
+embutidos (modo `painel` do `vite.config.js`), e `ferramentas/painel-unico.mjs` põe o JavaScript
+e o CSS para dentro do HTML. O resultado (`dist-painel/sima-sensor.html`, cerca de 430 KB) não
+depende de mais nenhum arquivo. A página descobre sozinha que está dentro do servidor do sensor:
+ao abrir, pergunta `GET /api/limites` ao próprio endereço; se a resposta for a dos limites, usa
+esse endereço e conecta sem botão.
 
 **Simulação.** "Simular sem o sensor" põe um controle embaixo do desenho: arrastando, a água
-sobe e o nível muda. A tela avisa que é simulação. É a reserva se o Wi-Fi ou o protótipo
-falharem, e o jeito de mostrar a tela num celular.
+sobe e o nível muda. A página avisa que é simulação. É a reserva se o Wi-Fi ou o protótipo
+falharem.
 
-**Ajustes do sensor** mostra o endereço do servidor, os limites em uso (e se vieram do servidor)
-e a última resposta crua do servidor, para conferir.
+**Ajustes do sensor** (botão no pé da página) mostra o endereço do servidor e o botão de
+desconectar, os limites em uso (e se vieram do servidor) e a última resposta crua do servidor.
 
 **O que foi conferido e o que não foi.** Conferido com uma cópia do servidor do grupo e leituras
 enviadas como o ESP32 enviaria: os quatro níveis, a leitura inválida, o sensor parado, o servidor
-caindo e voltando, e o app em https falando com `http://localhost:3000` depois de permitir o
-acesso (Chromium 141). **Não conferido:** o ESP32 de verdade e o app publicado lendo de outro
+caindo e voltando, o painel em https falando com `http://localhost:3000` depois de permitir o
+acesso (Chromium 141), e o arquivo único aberto do próprio servidor, sem nenhum pedido para fora.
+Tamanhos conferidos: 1366×768, 1920×1080 e celular, nos dois temas. **Não conferido:** o ESP32 de verdade e o app publicado lendo de outro
 computador.
 
 **O que a tela não faz.** A leitura não vai para o backend do SIMA nem vira um bueiro do mapa:
 fica só nesta tela. O passo seguinte é o ESP32 (ou o servidor do sensor) enviar a leitura ao
 backend em Java, e o backend guardar a profundidade do bueiro para transformar distância em %.
 
-**Histórico desta tela.** Uma primeira versão (06/10/2026, commit `47cb659`) lia o ESP32 pelo
-cabo USB e mostrava só "seco" ou "molhado", porque era o que se sabia do protótipo. Com o código
-do servidor em mãos, a tela passou a ler a distância pelo servidor e a leitura por cabo saiu.
+**Histórico.** Uma primeira versão (06/10/2026, commit `47cb659`) lia o ESP32 pelo cabo USB e
+mostrava só "seco" ou "molhado", porque era o que se sabia do protótipo. Com o código do servidor
+em mãos, passou a ler a distância pelo servidor, ainda como uma tela dentro do app (uma coluna
+de 420 px). Na mesma noite virou esta página separada, de tela inteira.
 
 ## Ruas afetadas
 
@@ -435,7 +459,8 @@ seria pior do que avisar. Ele mantém a última resposta boa (guardada no aparel
 ## Estrutura
 
 ```
-index.html                 aplica o tema antes do React (a tela não pisca)
+index.html                 o app; aplica o tema antes do React (a tela não pisca)
+sensor.html                o painel do sensor, página separada do app (ver "Sensor ao vivo")
 public/
   sw.js                    service worker: o app e o mapa já visto continuam abrindo sem internet
   manifest.webmanifest     nome, ícones e cores do app instalado
@@ -453,14 +478,16 @@ src/
     bairros.js             resumo por bairro
     regioes.js             aviso por região: cobertura mínima, limiares e as frases
     simulador.js           simulador da tela da IA: lugares, cenários e explicações
-  sensor/
-    nivel.js               a distância medida (cm) vira nível: limites, leitura inválida, mediana (e o teste)
-    servidor.js            pergunta a leitura ao servidor do sensor (o Node do grupo do IoT) e trata a permissão do navegador
     PontosContexto.jsx     guarda os pontos e atualiza sozinho (usePontos)
     modelo.test.js         testes das regras acima
     demo.test.js           testes da demonstração
     regioes.test.js        testes do aviso por região
     simulador.test.js      testes do simulador
+  sensor/                  o painel do sensor (página separada: sensor.html)
+    pagina.jsx             entrada da página: fontes, estilos e o Painel
+    Painel.jsx             a página: desenho do bueiro, nível, medida, simulação e ajustes
+    nivel.js               a distância medida (cm) vira nível: limites, leitura inválida, mediana (e o teste)
+    servidor.js            pergunta a leitura ao servidor do sensor (o Node do grupo do IoT) e trata a permissão do navegador
   rotas/
     planejar.js            a regra: caminho mais rápido, bueiros no caminho, desvio e os textos
     geometria.js           contas de distância, traçado compactado e área a evitar
@@ -491,15 +518,16 @@ src/
     Busca.jsx              busca do mapa: lugares para ir (rota), bueiros e bairros
     Avisos.jsx             avisos por região
     ComoFunciona.jsx       como a IA funciona, com o simulador
-    Sensor.jsx             sensor ao vivo: o protótipo (ESP32), lido do servidor do sensor
     Menu.jsx               atalhos, tema e ajustes
     EmConstrucao.jsx       telas das próximas etapas e a tela Sobre
   estilos/
     base.css               tokens dos dois temas e componentes (vidro, listas, botões)
     telas.css              estilos de cada tela
+    sensor.css             estilos do painel do sensor (tela inteira no computador, coluna no celular)
 ferramentas/
   gerar-ruas.mjs           gera src/dados/ruasDosBueiros.js a partir do OpenStreetMap (npm run ruas)
   ruas-nucleo.mjs          a regra que escolhe o trecho de rua de cada ponto (e o teste)
+  painel-unico.mjs         junta o painel do sensor num arquivo só (npm run painel)
 ```
 
 Endereços: `/` mapa · `/?ponto=ID` mapa com o cartão aberto · `/bueiro/ID` · `/bairros?b=Nome`

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#15171a" />
+    <meta name="description" content="SIMA: o protótipo do sensor de bueiro funcionando, em tempo real." />
+    <link rel="icon" type="image/png" href="./icone-192.png" />
+    <title>SIMA · Sensor ao vivo</title>
+    <!-- Painel do sensor: página separada do app (index.html), só para mostrar o protótipo do
+         sensor funcionando. O código está em src/sensor/. -->
+    <script>
+      // Aplica o tema e a preferência de animações antes do primeiro desenho, para a página não
+      // piscar na cor errada. As mesmas regras estão em index.html e em
+      // src/preferencias/PreferenciasContexto.jsx (o tema escolhido no app vale aqui também).
+      (function () {
+        var prefs = {};
+        try { prefs = JSON.parse(localStorage.getItem("sima.preferencias") || "{}") || {}; } catch (e) {}
+        var tema = prefs.tema;
+        if (tema !== "claro" && tema !== "escuro") {
+          tema = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "claro" : "escuro";
+        }
+        var pedeMenos = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var reduzir = prefs.animacoes === "reduzidas" || (prefs.animacoes !== "ligadas" && pedeMenos);
+        document.documentElement.className = (tema === "claro" ? "thm-light" : "thm-dark") + (reduzir ? " mov-reduzido" : "");
+      })();
+    </script>
+    <style>
+      /* Cores mínimas para antes de o CSS da página chegar. */
+      html.thm-dark { background: #15171a; color: #e6e8ea; }
+      html.thm-light { background: #f3f2f0; color: #1c1e21; }
+    </style>
+  </head>
+  <body>
+    <div id="raiz"></div>
+    <noscript>O painel do sensor precisa de JavaScript.</noscript>
+    <script type="module" src="/src/sensor/pagina.jsx"></script>
+  </body>
+</html>

@@ -58,7 +58,12 @@ export default function Menu() {
       <h2 className="grp-t">Entender</h2>
       <div className="grp">
         {atalho("Como a IA funciona", "/ia", <IconeFaisca pequeno />)}
-        {atalho("Sensor ao vivo", "/sensor", <IconeSensor pequeno />)}
+        {/* O sensor ao vivo é uma página separada do app (sensor.html), de tela inteira. */}
+        <a className="row mu-link" href="./sensor.html">
+          <span className="row-ic" aria-hidden="true"><IconeSensor pequeno /></span>
+          <span className="row-k">Sensor ao vivo</span>
+          <span className="row-chev"><IconeSeta pequeno /></span>
+        </a>
         <button type="button" className="row" onClick={() => { apresentacao.abrir(); navegar("/"); }}>
           <span className="row-ic" aria-hidden="true"><IconeRepetir pequeno /></span>
           <span className="row-k">Rever a apresentação</span>

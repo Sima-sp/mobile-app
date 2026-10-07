@@ -1,0 +1,143 @@
+/* Painel do sensor (sensor.html): a página de tela inteira que mostra o protótipo funcionando.
+   Usa os tokens e os componentes de base.css (cores dos dois temas, .btn, .seg, .plate, textos).
+   Prefixo das classes: ps- (painel do sensor).
+
+   Desenho da página:
+   - computador: o desenho do bueiro à esquerda e a leitura à direita, ocupando a altura da tela;
+     embaixo, "como funcionaria no bueiro" em três colunas e a barra com a simulação e os ajustes;
+   - celular (até 860 px): tudo em uma coluna, com o desenho no alto.
+   Os tamanhos de letra crescem com a largura da tela (clamp), para a leitura ser vista de longe
+   num notebook ou num telão. */
+
+.ps { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto auto auto; max-width: 1760px; margin: 0 auto;
+  padding: 0 clamp(16px, 2.6vw, 44px) clamp(14px, 1.8vw, 26px); }
+/* Os botões neutros desta página têm letra na cor da tinta (o azul fica para a ação principal). */
+.ps .btn-iron { color: var(--bone-50); }
+
+/* ── Alto da página: marca, selo de situação e botões ── */
+.ps-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding: clamp(12px, 1.5vw, 20px) 0; }
+.ps-marca { display: flex; align-items: baseline; gap: 12px; color: var(--bone-50); }
+.ps-marca .stamp { font-size: 28px; line-height: 1; }
+.ps-marca-tela { font-size: 17px; font-weight: 700; color: var(--bone-300); }
+.ps-selo { display: inline-flex; align-items: center; gap: 9px; min-height: 36px; padding: 0 14px; border-radius: 18px; background: var(--fill-2);
+  font-size: 14.5px; font-weight: 700; color: var(--bone-100); font-variant-numeric: tabular-nums; }
+.ps-selo i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--iron-400); }
+.ps-selo-vivo i { background: var(--route); box-shadow: 0 0 0 4px var(--blue-soft); }
+.ps-selo-espera i { background: var(--bone-500); }
+.ps-selo-erro i { background: var(--r3); }
+.ps-selo-simulacao i { background: transparent; border: 2px solid var(--bone-300); }
+.ps-topo-acoes { display: flex; gap: 8px; margin-left: auto; }
+.ps-botao { min-height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14.5px; }
+a.ps-botao:hover { text-decoration: none; }
+
+/* ── Corpo: desenho e leitura lado a lado ── */
+.ps-corpo { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(18px, 2.4vw, 44px); min-height: 0; }
+.ps-palco { display: flex; flex-direction: column; min-height: 0; padding: clamp(14px, 1.6vw, 26px); border-radius: 24px; }
+/* O desenho ocupa a altura que sobrar (height: 0 + flex), sem empurrar a página para baixo. */
+.ps-desenho { display: block; width: 100%; height: 0; flex: 1 1 auto; min-height: 240px; }
+.ps-terra { fill: var(--fill-2); }
+.ps-oco { fill: var(--lid-bg); }
+.ps-rua { fill: var(--iron-500); }
+.ps-tampa { fill: var(--iron-400); }
+.ps-frestas { stroke: var(--lid-bg); stroke-width: 4; stroke-linecap: round; fill: none; }
+/* A água é azul, como no mapa. Sobe e desce junto com a régua (mesma duração). */
+.ps-agua { fill: var(--route-deep); opacity: 0.85; transition: transform 900ms cubic-bezier(.3,.7,.2,1), opacity 300ms; }
+.ps-desenho-vazio .ps-agua { opacity: 0.35; }
+.ps-fio { stroke: var(--bone-500); stroke-width: 2; fill: none; stroke-linejoin: round; }
+.ps-placa { fill: var(--card); stroke: var(--bone-500); stroke-width: 1.5; }
+.ps-sensor { fill: var(--bone-300); }
+.ps-letra { font-family: var(--f-ui); font-size: 11px; font-weight: 700; fill: var(--bone-300); }
+/* Marcas de onde começa cada nível: um risco na parede do poço, na cor do nível. */
+.ps-lim path { stroke-width: 3; stroke-linecap: round; fill: none; }
+.ps-lim-n2 path { stroke: var(--r2); }
+.ps-lim-n3 path { stroke: var(--r3); }
+.ps-lim-n4 path { stroke: var(--r4); }
+/* A medida, do sensor até a água. */
+.ps-regua-linha { fill: var(--bone-100); transition: transform 900ms cubic-bezier(.3,.7,.2,1); }
+.ps-regua-anda { transition: transform 900ms cubic-bezier(.3,.7,.2,1); }
+.ps-regua-anda path { stroke: var(--bone-100); stroke-width: 1.5; stroke-linecap: round; fill: none; }
+.ps-letra-medida { font-size: 15px; fill: var(--bone-50); font-variant-numeric: tabular-nums; }
+.mov-reduzido .ps-agua, .mov-reduzido .ps-regua-linha, .mov-reduzido .ps-regua-anda { transition: none; }
+
+/* Controle da simulação, colado no desenho. Mesmo desenho do controle da tela "Como a IA
+   funciona" (telas.css, .ia-faixa): área de toque de 44 px, trilho fino, parte preenchida em --pct. */
+.ps-faixa { padding: 12px 4px 0; }
+.ps-rotulo { display: block; font-size: 13.5px; font-weight: 700; color: var(--bone-500); }
+.ps-desliza { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 44px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+.ps-desliza::-webkit-slider-runnable-track { height: 8px; border-radius: 4px;
+  background: linear-gradient(to right, var(--route-deep) var(--pct), var(--fill-3) var(--pct)); }
+.ps-desliza::-moz-range-track { height: 8px; border-radius: 4px; background: var(--fill-3); }
+.ps-desliza::-moz-range-progress { height: 8px; border-radius: 4px; background: var(--route-deep); }
+.ps-desliza::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%;
+  background: #ffffff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08); }
+.ps-desliza::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #ffffff; border: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08); }
+.ps-desliza:focus-visible { outline: none; }
+.ps-desliza:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
+.ps-desliza:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--route), 0 1px 4px rgba(0,0,0,0.35); }
+
+/* ── Leitura: o nível em letras grandes, a medida, o bueiro no mapa e o histórico ── */
+.ps-leitura { display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 2.2vh, 26px); min-width: 0; padding: 4px 0; }
+.ps-olho { margin-bottom: 6px; }
+.ps-titulo { font-size: clamp(44px, 5.4vw, 104px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--bone-50); text-wrap: balance; }
+.ps-titulo.ps-n3 { color: var(--r3); }
+.ps-titulo.ps-n4 { color: var(--r4); }
+.ps-medida { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; margin-top: clamp(8px, 1.2vh, 16px); color: var(--bone-50); }
+.ps-medida b { font-size: clamp(40px, 4.2vw, 80px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ps-medida span { font-size: clamp(20px, 2vw, 36px); font-weight: 700; color: var(--bone-300); }
+.ps-medida em { font-style: normal; font-size: clamp(15px, 1.25vw, 21px); color: var(--bone-500); margin-left: 6px; }
+.ps-frase { margin-top: clamp(8px, 1.2vh, 14px); max-width: 36em; font-size: clamp(16px, 1.4vw, 23px); line-height: 1.4; color: var(--bone-300); text-wrap: pretty; }
+.ps-no-mapa { display: flex; align-items: center; gap: 16px; padding-top: clamp(14px, 2.2vh, 24px); border-top: 1px solid var(--sep); }
+.ps-no-mapa .small, .ps-ajuste .small { font-size: clamp(14.5px, 1.15vw, 17.5px); }
+.ps-no-mapa b, .ps-ajuste b { display: block; color: var(--bone-50); font-weight: 700; }
+.ps-historico .label span { font-weight: 400; }
+.ps-pontos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Um ponto por leitura. Baixo é só o contorno; os outros níveis vêm cheios, na cor do nível.
+   Leitura inválida (n0) fica com o contorno apagado. */
+.ps-ponto { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--iron-400); flex: none; }
+.ps-ponto-n1 { border-color: var(--r1); }
+.ps-ponto-n2 { border-color: var(--r2); background: var(--r2); }
+.ps-ponto-n3 { border-color: var(--r3); background: var(--r3); }
+.ps-ponto-n4 { border-color: var(--r4); background: var(--r4); }
+.ps-conexao .btn { width: 100%; max-width: 440px; border-radius: 25px; }
+.ps-situacao { margin-top: 10px; max-width: 46em; overflow-wrap: anywhere; }
+.ps-erro { max-width: 46em; color: var(--bone-100); overflow-wrap: anywhere; }
+.ps-erro p { color: var(--r3); font-weight: 700; }
+.ps-erro ul { margin: 6px 0 0; padding-left: 18px; }
+.ps-erro li + li { margin-top: 4px; }
+
+/* ── Como funcionaria no bueiro: três passos ── */
+.ps-como { margin-top: clamp(16px, 2.2vw, 30px); }
+.ps-passos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ps-passos li { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; }
+.ps-passos span { width: 28px; height: 28px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--fill-3); color: var(--bone-50); font-weight: 800; font-size: 14.5px; }
+.ps-passos p { padding-top: 3px; color: var(--bone-100); font-size: clamp(14.5px, 1.1vw, 17px); }
+
+/* ── Barra de baixo: simulação, aviso de protótipo e ajustes ── */
+.ps-rodape { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; margin-top: clamp(12px, 1.6vw, 20px); }
+.ps-simular { display: flex; align-items: center; gap: 12px; }
+.ps-aviso { flex: 1 1 260px; }
+.ps-abre-ajustes { min-height: 44px; padding: 0 14px; border-radius: 14px; font-size: 15.5px; }
+.ps-ajustes-corpo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+.ps-ajuste { padding: 16px 18px; min-width: 0; }
+.ps-endereco-linha { display: flex; gap: 8px; margin: 6px 0 8px; }
+.ps-campo { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--fill-2); color: var(--bone-50);
+  font-family: var(--f-mono); font-size: 15px; }
+.ps-campo:focus-visible { outline: 2px solid var(--route); outline-offset: 1px; }
+.ps-campo[aria-invalid="true"] { outline: 2px solid var(--r3); outline-offset: 1px; }
+.ps-endereco-linha .btn { flex: none; min-height: 44px; padding: 0 16px; font-size: 15.5px; }
+.ps-desconectar { margin-top: 10px; min-height: 44px; padding: 0 14px; margin-left: -14px; border-radius: 14px; font-size: 15.5px; }
+.ps-cru { margin: 8px 0 0; color: var(--bone-300); font-family: var(--f-mono); font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+
+/* ── Celular e janela estreita: uma coluna ── */
+@media (max-width: 860px) {
+  .ps { grid-template-rows: auto; }
+  .ps-topo-acoes { margin-left: 0; width: 100%; order: 3; }
+  .ps-selo { margin-left: auto; }
+  .ps-corpo { grid-template-columns: minmax(0, 1fr); }
+  .ps-desenho { height: auto; flex: none; min-height: 0; aspect-ratio: 320 / 212; }
+  .ps-leitura { justify-content: flex-start; }
+  .ps-passos, .ps-ajustes-corpo { grid-template-columns: minmax(0, 1fr); }
+  .ps-simular { width: 100%; justify-content: space-between; }
+}
