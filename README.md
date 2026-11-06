@@ -233,6 +233,9 @@ sistema de verdade se comportar como a demonstração, a mesma conta precisa ent
 
 ## Sensor ao vivo
 
+O código do protótipo (o servidor do sensor e o firmware do ESP32, do grupo do IoT) fica em
+[`iot/`](iot/README.md).
+
 O **painel do sensor** mostra o protótipo do sensor funcionando, em tempo real: o nível da água
 num desenho do bueiro em corte, a distância medida e como aquele bueiro apareceria no mapa.
 
