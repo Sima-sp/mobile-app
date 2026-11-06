@@ -1,4 +1,5 @@
 # Atualizações de dependências: uma vez por semana, num PR só por pasta.
+# (O servidor do sensor saiu para o Sima-sp/iot-firmware, que tem o Dependabot dele.)
 # Versões major ficam de fora até depois da banca (03/12/2026), para não quebrar nada no fim.
 version: 2
 updates:
@@ -14,19 +15,6 @@ updates:
         update-types: ["version-update:semver-major"]
     groups:
       dependencias:
-        patterns: ["*"]
-  - package-ecosystem: npm
-    directory: /iot/servidor-sensor
-    schedule:
-      interval: weekly
-      day: monday
-      timezone: America/Sao_Paulo
-    open-pull-requests-limit: 1
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    groups:
-      servidor-sensor:
         patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /

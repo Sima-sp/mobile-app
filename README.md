@@ -233,8 +233,9 @@ sistema de verdade se comportar como a demonstração, a mesma conta precisa ent
 
 ## Sensor ao vivo
 
-O código do protótipo (o servidor do sensor e o firmware do ESP32, do grupo do IoT) fica em
-[`iot/`](iot/README.md).
+O código do protótipo (o firmware do ESP32 e o servidor do sensor, do grupo do IoT) fica no
+repositório [`Sima-sp/iot-firmware`](https://github.com/Sima-sp/iot-firmware), com o passo a
+passo para gravar a placa e rodar o servidor.
 
 O **painel do sensor** mostra o protótipo do sensor funcionando, em tempo real: o nível da água
 num desenho do bueiro em corte, a distância medida e como aquele bueiro apareceria no mapa.
