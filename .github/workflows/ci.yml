@@ -1,0 +1,33 @@
+# Testes e build do app em todo pull request.
+#
+# A publicação no GitHub Pages continua no publicar.yml (só na main). Este job se chama "ci":
+# é esse nome que a regra da branch main exige.
+
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build (o mesmo da publicação)
+        run: npm run build:demo
+      - name: Servidor do sensor sem erro de sintaxe
+        run: node --check iot/servidor-sensor/server.js

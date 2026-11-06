@@ -689,3 +689,11 @@ hospedagem estática sem configurar o servidor.
 | App nas lojas (APK) | Capacitor |
 
 O mapa completo de construção está no projeto: `claude/app-mapa-de-construcao.md`.
+
+## Como o grupo trabalha
+
+- Ninguém envia direto para a `main`: cada mudança vai numa branch e entra por pull request.
+- O PR só pode ser juntado com o CI passando (job `ci`: testes, build e checagem do servidor do sensor).
+- O merge é sempre *squash* (um commit por PR) e a branch é apagada depois. Cada merge na `main`
+  publica o app de novo no GitHub Pages.
+- O Dependabot abre, às segundas, um PR com as atualizações menores de dependências.
