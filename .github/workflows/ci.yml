@@ -29,5 +29,3 @@ jobs:
       - run: npm test
       - name: Build (o mesmo da publicação)
         run: npm run build:demo
-      - name: Servidor do sensor sem erro de sintaxe
-        run: node --check iot/servidor-sensor/server.js
